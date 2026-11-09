@@ -1,0 +1,42 @@
+,Codificacao , Valor,,,,,,,,,,,,,,,,,,
+4c,1,4 COPAS,,,,,,,,,Combinações de cartas/pontos envido: ,,,,,,,36,,0
+4p,1,4 PAUS,,,,,,,,,arranjo simples dividido por 2,,,,,,,36,,0
+4o,1,4 OURO,,,,,,,,,,,,,,,,36,,0
+4e,1,4 ESPADA,,,,,,,,,10! / 8! = 90 / 2 = 45,,,,,,,36,,0
+5c,2,5 COPAS,,,1,5o,12e,2o,M,,,,,,,,,32,,4
+5p,2,5 PAUS,,,2,11o,3b,7e,A,,,,,,,,,32,,4
+5o,2,5 OURO,,,3,,,,,,,,,,,,,32,,4
+5e,2,5 ESPADA,,,4,,,,,,,,,,,,,32,,4
+6c,3,5 COPAS,,,5,,,,,,,,,,,,,28,,8
+6p,3,6 PAUS,,,6,,,,,,,,,,,,,28,,8
+6o,3,6 OURO,,,7,,,,,,,,,,,,,28,,8
+6e,3,6 ESPADA,,,8,,,,,,,,,,,,,28,,8
+7c,4,7 COPAS,,,9,,,,,,,,,,,,,26,,10
+7p,4,7 PAUS,,,10,,,,,,,,,,,,,26,,10
+10c,6,10 COPAS,,,,,,,,,,,,,,,,22,,14
+10p,6,10 PAUS,,,,,,,,,,,,,,,,22,,14
+10o,6,10 OURO,,,,,,,,,,,,,,,,22,,14
+10e,6,10 ESPADA,,,,,,,,,,,,,,,,22,,14
+11c,7,11 COPAS,,,CartasJogadas,Pontuacao,,Codificação quem para cluster,,,,,,,,,,18,,18
+11p,7,11 PAUS,,,Alta,46,,QUEM,CODIFICAÇÃO,,,,,,,,,18,,18
+11o,7,11 OURO,,,Media,16,,Rôbo,1,,,,,,,,,18,,18
+11e,7,11 ESPADA,,,Baixa,4,,Ninguém,2,,,,,,,,,18,,18
+12c,8,12 COPAS,,,,,,Humano,3,,,,,,,,,14,,22
+12p,8,12 PAUS,,,,,,,,,,,,,,,,14,,22
+12o,8,12 OURO,,,,,,,,,,,,,,,,14,14,22
+12e,8,12 ESPADA,,,,,,,,,,,,,,,,,,
+1O,12,1 OURO,,,,,,,,,,,,,,,,12,,24
+1c,12,1 COPAS,,,,,,,,,,,,,,,,12,,24
+2O,16,2 OURO,,,,,,,,,,,,,,,,8,,28
+2c,16,2 COPAS,,,,,,,,,,,,,,,,8,,28
+2p,16,2 PAUS,,,,,,,,,,,,,,,,8,,28
+2E,16,2 ESPADAS,,,,Pontuacao,,,Pontuacao,,,,,,51/6,,,8,,28
+3c,24,3 COPAS,,,Maiores Altas,51,,Oponente vai ao baralho,-46,soma das codificações das pontuações das cartas quando divididas em 6,,,,,,,,,,36
+3p,24,3 PAUS,,,Maiores Baixas,41,,Carta Virada ,-1,,,,,,,,,4,,32
+3o,24,3 OURO,,,Branca Alta,20,,Agente foi ao baralho,-10,,,,,,,,,4,,32
+3e,24,3 ESPADA,,,Brancas médias,12,,,,,,,,,,,,,,
+7o,40,7 OURO,,,NEGRAS BAIXAS,7,,Agente Perdeu,-15,,,,,,,,,4,,32
+7e,42,7 ESPADA,,,Brancas Baixas,3,,,,,,,,,,,,3,,33
+1p,50,1 PAUS,,,,,,,,,,,,,,,,2,,34
+1e,52,1 ESPADA,,,,,,,,,,,,,,,,1,,35
+,,,,,,,,,,,,,,,,,,0,,36
