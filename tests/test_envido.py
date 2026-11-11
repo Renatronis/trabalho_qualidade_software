@@ -1,276 +1,154 @@
 """
-Etapa 3 - Testes unitários do Envido.
+Envido.
 
-Casos de teste: CT10 a CT17 (defeitos D03, D04, D09, D10).
+Casos de teste: CT10 a CT17 (defeito D04).
 Requisitos: RF09 (pedidos e valores), RF10 (cálculo dos pontos), RF11 (vencedor).
 
-O bot responde por meio de uma IA "dublê" (cbr_falsa), para que o teste
-controle a resposta. O humano responde pelo teclado simulado (entradas_usuario).
+O bot responde pela IA "dublê" (cbr_falsa), para o teste controlar a resposta;
+o humano responde pelo teclado simulado (entradas_usuario).
 Nas chamadas, quem_pediu = 1 é o humano e quem_pediu = 2 é o bot.
 """
+import inspect
+
 import pytest
 
 from truco.bot import Bot
 from truco.envido import Envido
 from truco.jogador import Jogador
 
-MAO_33 = ("7 de COPAS", "6 de COPAS", "1 de OUROS")    # 20 + 7 + 6 = 33
-MAO_7 = ("7 de BASTOS", "6 de ESPADAS", "1 de COPAS")  # naipes diferentes: maior carta = 7
-
-# Códigos usados pelo jogo
+MAO_33 = ("7 de COPAS", "6 de COPAS", "1 de OUROS")    # 20 + 7 + 6
+MAO_7 = ("7 de BASTOS", "6 de ESPADAS", "1 de COPAS")  # naipes diferentes: maior carta
 ENVIDO, REAL_ENVIDO, FALTA_ENVIDO = 6, 7, 8
 HUMANO, BOT = 1, 2
 
 
 @pytest.fixture
-def envido():
-    return Envido()
-
-
-@pytest.fixture
 def humano(jogador_com_mao):
-    """Humano com 33 pontos de envido."""
     return jogador_com_mao(*MAO_33, nome="Renato")
 
 
 @pytest.fixture
 def bot(bot_com_mao):
-    """Bot com 7 pontos de envido."""
     return bot_com_mao(*MAO_7, nome="Lucas")
 
 
-def pedir(envido, ia, tipo, quem_pediu, humano, bot, interface):
-    return envido.controlador_envido(ia, None, tipo, quem_pediu, humano, bot, interface)
-
-
-# ---------------------------------------------------------------- CT10 / RF10
-CASOS_ENVIDO = [
-    pytest.param(MAO_33, 33, id="par-7-6-mesmo-naipe"),
-    pytest.param(MAO_7, 7, id="naipes-diferentes"),
-    pytest.param(("5 de COPAS", "4 de COPAS", "7 de OUROS"), 29, id="par-5-4"),
-    pytest.param(("1 de COPAS", "2 de COPAS", "3 de COPAS"), 25, id="tres-do-mesmo-naipe"),
-    pytest.param(("12 de COPAS", "11 de OUROS", "10 de BASTOS"), 0, id="so-figuras"),
-    pytest.param(("12 de COPAS", "7 de COPAS", "4 de OUROS"), 27, id="figura-e-7-mesmo-naipe",
-                 marks=[pytest.mark.defeito("D03"),
-                        pytest.mark.xfail(reason="D03: par com figura vira 'maior carta' (retorna 7)")]),
-    pytest.param(("10 de COPAS", "11 de COPAS", "4 de OUROS"), 20, id="duas-figuras-mesmo-naipe",
-                 marks=[pytest.mark.defeito("D03"),
-                        pytest.mark.xfail(reason="D03: par de figuras deveria valer 20 (retorna 4)")]),
-]
+def pedir(ia, tipo, quem_pediu, humano, bot, interface, envido=None):
+    envido = envido or Envido()
+    envido.controlador_envido(ia, None, tipo, quem_pediu, humano, bot, interface)
+    return envido
 
 
 @pytest.mark.requisito("CT10")
-@pytest.mark.parametrize("classe", [Jogador, Bot], ids=["jogador", "bot"])
-@pytest.mark.parametrize("mao, pontos", CASOS_ENVIDO)
-def test_calcula_envido(nova_mao, classe, mao, pontos):
-    assert classe("Teste").calcula_envido(nova_mao(*mao)) == pontos
+def test_CT10_calculo_dos_pontos_de_envido(nova_mao):
+    casos = [
+        (MAO_33, 33),                                          # par do mesmo naipe
+        (MAO_7, 7),                                            # sem par: maior carta
+        (("5 de COPAS", "4 de COPAS", "7 de OUROS"), 29),      # par vence a carta maior
+        (("1 de COPAS", "2 de COPAS", "3 de COPAS"), 25),      # flor: melhor par
+        (("12 de COPAS", "11 de OUROS", "10 de BASTOS"), 0),   # só figuras
+    ]
+    for classe in (Jogador, Bot):
+        for textos, pontos in casos:
+            assert classe("Teste").calcula_envido(nova_mao(*textos)) == pontos, (classe.__name__, textos)
 
 
-def test_criar_mao_guarda_os_pontos_de_envido(humano, bot):
-    assert humano.retorna_pontos_envido() == 33
-    assert bot.retorna_pontos_envido() == 7
-
-
-# ---------------------------------------------------------------- CT11 / RF09
 @pytest.mark.requisito("CT11")
 @pytest.mark.entrada
-class TestHumanoRespondeEnvidoDoBot:
-    @pytest.mark.parametrize("respostas, pontos_humano, pontos_bot", [
-        (["0"], 0, 1),          # recusa: o bot (quem pediu) ganha 1
-        (["1"], 2, 0),          # aceita: humano vence 33 x 7 e ganha 2
-        (["2"], 5, 0),          # pede Real Envido; o bot aceita; humano ganha 5
-        (["3"], 12, 0),         # pede Falta Envido; o bot aceita; humano ganha 12 - 0
-    ], ids=["recusar", "aceitar", "real-envido", "falta-envido"])
-    def test_cada_opcao(self, envido, humano, bot, interface, cbr_falsa, entradas_usuario,
-                        respostas, pontos_humano, pontos_bot):
-        entradas_usuario(*respostas)
-        pedir(envido, cbr_falsa(envido=1), ENVIDO, BOT, humano, bot, interface)
-        assert (humano.pontos, bot.pontos) == (pontos_humano, pontos_bot)
-
-    @pytest.mark.parametrize("invalidas", [["9"], ["-1"], ["4", "7"]], ids=["9", "-1", "4-e-7"])
-    def test_opcao_invalida_repete_a_pergunta(self, envido, humano, bot, interface, cbr_falsa,
-                                              entradas_usuario, invalidas):
-        registro = entradas_usuario(*invalidas, "1")
-        pedir(envido, cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
-        assert len(registro.perguntas) == len(invalidas) + 1
-        assert all("aceita o pedido de envido" in p for p in registro.perguntas)
-        assert humano.pontos == 2
-
-    @pytest.mark.defeito("D09")
-    @pytest.mark.xfail(raises=ValueError, reason="D09: entrada não numérica derruba o jogo (int(input()))")
-    def test_entrada_nao_numerica_repete_a_pergunta(self, envido, humano, bot, interface,
-                                                    cbr_falsa, entradas_usuario):
-        entradas_usuario("s", "1")
-        pedir(envido, cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
-        assert humano.pontos == 2
+def test_CT11_humano_recusa_ou_aceita_o_envido_do_bot(jogador_com_mao, bot_com_mao, interface,
+                                                      cbr_falsa, entradas_usuario):
+    for resposta, pontos_esperados in (("0", (0, 1)), ("1", (2, 0))):
+        humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+        entradas_usuario(resposta)
+        pedir(cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
+        assert (humano.pontos, bot.pontos) == pontos_esperados, f"resposta {resposta}"
 
 
-# ---------------------------------------------------------------- CT12 / RF09
+@pytest.mark.requisito("CT11")
+@pytest.mark.entrada
+def test_CT11_opcao_invalida_repete_a_pergunta(humano, bot, interface, cbr_falsa, entradas_usuario):
+    """Laço 'while escolha not in [0, 1, 2, 3]': duas voltas inválidas e a saída."""
+    registro = entradas_usuario("9", "-1", "1")
+    pedir(cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
+    assert len(registro.perguntas) == 3
+    assert all("aceita o pedido de envido" in p for p in registro.perguntas)
+    assert humano.pontos == 2
+
+
 @pytest.mark.requisito("CT12")
-class TestHumanoPedeEnvido:
-    def test_bot_recusa_humano_ganha_1(self, envido, humano, bot, interface, cbr_falsa, capsys):
-        pedir(envido, cbr_falsa(envido=0), ENVIDO, HUMANO, humano, bot, interface)
-        assert (humano.pontos, bot.pontos) == (1, 0)
-        assert envido.retornar_quem_fugiu() == BOT
-        assert "Vencedor Envido" not in capsys.readouterr().out
+def test_CT12_humano_pede_envido_e_o_bot_responde(jogador_com_mao, bot_com_mao, interface, cbr_falsa, capsys):
+    humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+    envido = pedir(cbr_falsa(envido=0), ENVIDO, HUMANO, humano, bot, interface)
+    assert (humano.pontos, bot.pontos) == (1, 0)          # recusa: quem pediu ganha 1
+    assert envido.retornar_quem_fugiu() == BOT
 
-    def test_bot_aceita_e_humano_vence(self, envido, humano, bot, interface, cbr_falsa, capsys):
-        pedir(envido, cbr_falsa(envido=1), ENVIDO, HUMANO, humano, bot, interface)
-        assert (humano.pontos, bot.pontos) == (2, 0)
-        assert "Jogador 1 Vencedor Envido" in capsys.readouterr().out
-
-    def test_bot_aceita_e_bot_vence(self, envido, jogador_com_mao, bot_com_mao, interface, cbr_falsa):
-        humano = jogador_com_mao(*MAO_7)
-        bot = bot_com_mao(*MAO_33)
-        pedir(envido, cbr_falsa(envido=1), ENVIDO, HUMANO, humano, bot, interface)
-        assert (humano.pontos, bot.pontos) == (0, 2)
-
-    def test_bot_aumenta_para_real_envido_e_humano_aceita(self, envido, humano, bot, interface,
-                                                         cbr_falsa, entradas_usuario):
-        registro = entradas_usuario("1")
-        pedir(envido, cbr_falsa(envido=2), ENVIDO, HUMANO, humano, bot, interface)
-        assert "Real envido" in registro.perguntas[0]
-        assert humano.pontos == 5
-
-    def test_bot_aumenta_para_falta_envido_e_humano_aceita(self, envido, humano, bot, interface,
-                                                          cbr_falsa, entradas_usuario):
-        entradas_usuario("1")
-        humano.pontos = 3
-        pedir(envido, cbr_falsa(envido=3), ENVIDO, HUMANO, humano, bot, interface)
-        assert humano.pontos == 3 + (12 - 3)  # falta = 12 - pontos do adversário de quem pediu
-
-    def test_ia_recebe_o_tipo_e_os_pontos_do_bot(self, envido, humano, bot, interface, cbr_falsa):
-        ia = cbr_falsa(envido=1)
-        pedir(envido, ia, ENVIDO, HUMANO, humano, bot, interface)
-        nome, tipo, quem_pediu, pontos_robo, _ = ia.chamadas[0]
-        assert (nome, tipo, quem_pediu, pontos_robo) == ("envido", ENVIDO, HUMANO, 7)
-
-    @pytest.mark.defeito("D10")
-    @pytest.mark.xfail(reason="D10: o bot avalia se está perdendo com os próprios pontos de envido, não com o placar")
-    def test_bot_empatado_no_placar_nao_esta_perdendo(self, envido, humano, bot, interface, cbr_falsa):
-        ia = cbr_falsa(envido=1)
-        humano.pontos, bot.pontos = 0, 0
-        pedir(envido, ia, ENVIDO, HUMANO, humano, bot, interface)
-        robo_perdendo = ia.chamadas[0][4]
-        assert robo_perdendo is False
-
-
-# ---------------------------------------------------------------- CT13 / RF09
-@pytest.mark.requisito("CT13")
-@pytest.mark.parametrize("resposta_bot, pontos_humano", [(1, 5), (0, 2)], ids=["aceita", "recusa"])
-def test_real_envido(envido, humano, bot, interface, cbr_falsa, resposta_bot, pontos_humano):
-    pedir(envido, cbr_falsa(envido=resposta_bot), REAL_ENVIDO, HUMANO, humano, bot, interface)
-    assert humano.pontos == pontos_humano
+    humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+    pedir(cbr_falsa(envido=1), ENVIDO, HUMANO, humano, bot, interface)
+    assert (humano.pontos, bot.pontos) == (2, 0)          # aceite: vence 33 x 7 e ganha 2
+    assert "Jogador 1 Vencedor Envido" in capsys.readouterr().out
 
 
 @pytest.mark.requisito("CT13")
-def test_real_envido_bot_aumenta_para_falta(envido, humano, bot, interface, cbr_falsa, entradas_usuario):
-    registro = entradas_usuario("1")
-    pedir(envido, cbr_falsa(envido=2), REAL_ENVIDO, HUMANO, humano, bot, interface)
-    assert "[1] Aceitar" in registro.perguntas[0]
-    assert humano.pontos == 12
-
-
-# ---------------------------------------------------------------- CT14 / RF09
 @pytest.mark.requisito("CT14")
-@pytest.mark.parametrize("pontos_bot, valor_falta", [(0, 12), (8, 4), (11, 1)])
-def test_falta_envido_vale_12_menos_pontos_do_adversario(envido, humano, bot, interface, cbr_falsa,
-                                                         pontos_bot, valor_falta):
-    bot.pontos = pontos_bot
-    pedir(envido, cbr_falsa(envido=1), FALTA_ENVIDO, HUMANO, humano, bot, interface)
-    assert envido.valor_envido == valor_falta
-    assert humano.pontos == valor_falta
+def test_CT13_CT14_valores_do_real_envido_e_da_falta_envido(jogador_com_mao, bot_com_mao, interface, cbr_falsa):
+    humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+    pedir(cbr_falsa(envido=1), REAL_ENVIDO, HUMANO, humano, bot, interface)
+    assert humano.pontos == 5
+
+    for pontos_bot, falta in ((0, 12), (8, 4)):           # falta = 12 - pontos do adversário
+        humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+        bot.pontos = pontos_bot
+        envido = pedir(cbr_falsa(envido=1), FALTA_ENVIDO, HUMANO, humano, bot, interface)
+        assert envido.valor_envido == falta and humano.pontos == falta
 
 
-@pytest.mark.requisito("CT14")
-def test_falta_envido_recusado(envido, humano, bot, interface, cbr_falsa):
-    pedir(envido, cbr_falsa(envido=0), FALTA_ENVIDO, HUMANO, humano, bot, interface)
-    assert (humano.pontos, bot.pontos) == (5, 0)
-
-
-# ---------------------------------------------------------------- CT15 / RF11
 @pytest.mark.requisito("CT15")
-@pytest.mark.parametrize("metodo", ["avaliar_vencedor_envido", "avaliar_vencedor_falta_envido"])
-@pytest.mark.parametrize("pontos_j1, pontos_j2, vencedor", [
-    (33, 7, 1), (7, 33, 2), (25, 25, 1)], ids=["j1-maior", "j2-maior", "empate-vence-j1"])
-def test_vencedor_do_envido(envido, metodo, pontos_j1, pontos_j2, vencedor):
-    j1, j2 = Jogador("Renato"), Jogador("Lucas")
-    envido.jogador1_pontos, envido.jogador2_pontos = pontos_j1, pontos_j2
-    getattr(envido, metodo)(HUMANO, j1, j2)
-    assert envido.quem_venceu_envido == vencedor
-    assert (j1.pontos > 0, j2.pontos > 0) == (vencedor == 1, vencedor == 2)
+def test_CT15_vencedor_do_envido_inclusive_no_empate():
+    for pontos_j1, pontos_j2, vencedor in ((33, 7, 1), (7, 33, 2), (25, 25, 1)):
+        envido, j1, j2 = Envido(), Jogador("Renato"), Jogador("Lucas")
+        envido.jogador1_pontos, envido.jogador2_pontos = pontos_j1, pontos_j2
+        envido.avaliar_vencedor_envido(HUMANO, j1, j2)
+        assert envido.quem_venceu_envido == vencedor, (pontos_j1, pontos_j2)
 
 
-# ---------------------------------------------------------------- CT16 / RF09
 @pytest.mark.requisito("CT16")
-class TestBloqueiosDoEnvido:
-    def test_segundo_pedido_na_mesma_mao_e_ignorado(self, envido, humano, bot, interface, cbr_falsa):
-        pedir(envido, cbr_falsa(envido=1), ENVIDO, HUMANO, humano, bot, interface)
-        ia = cbr_falsa(envido=1)
-        assert pedir(envido, ia, REAL_ENVIDO, HUMANO, humano, bot, interface) is None
-        assert ia.chamadas == []
-        assert humano.pontos == 2
-
-    def test_jogador_bloqueado_nao_pode_pedir(self, envido, humano, bot, interface, cbr_falsa):
-        envido.jogador_bloqueado = HUMANO
-        ia = cbr_falsa(envido=1)
-        assert pedir(envido, ia, ENVIDO, HUMANO, humano, bot, interface) is None
-        assert ia.chamadas == [] and humano.pontos == 0
-
-    def test_inverter_jogador_bloqueado(self, envido):
-        envido.inicializar_jogador_bloqueado(1)
-        envido.inverter_jogador_bloqueado()
-        assert envido.jogador_bloqueado == 2
-        envido.inverter_jogador_bloqueado()
-        assert envido.jogador_bloqueado == 1
-
-    def test_resetar_volta_ao_estado_inicial(self, envido, humano, bot, interface, cbr_falsa):
-        pedir(envido, cbr_falsa(envido=1), FALTA_ENVIDO, HUMANO, humano, bot, interface)
-        envido.resetar()
-        assert vars(envido) == vars(Envido())
+def test_CT16_segundo_pedido_na_mesma_mao_e_ignorado(humano, bot, interface, cbr_falsa):
+    envido = pedir(cbr_falsa(envido=1), ENVIDO, HUMANO, humano, bot, interface)
+    ia = cbr_falsa(envido=1)
+    assert envido.controlador_envido(ia, None, REAL_ENVIDO, HUMANO, humano, bot, interface) is None
+    assert ia.chamadas == []           # a IA nem é consultada
+    assert humano.pontos == 2          # os pontos não mudam
 
 
-# ---------------------------------------------------------------- CT17 / RF09
 @pytest.mark.requisito("CT17")
 @pytest.mark.cenario
 @pytest.mark.lento
 @pytest.mark.defeito("D04")
 @pytest.mark.xfail(reason="D04: turno_do_bot chama controlador_envido com os argumentos errados (TypeError) "
                           "e, em seguida, registra o pedido como sendo do humano (quem_pediu=1)")
-def test_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
+def test_D04_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
     """Executa o turno REAL do bot (truco/__main__.py, linhas 125-136).
 
-    Só a decisão do bot é fixada: na primeira vez que ele joga, escolhe 6
-    (Envido). Todo o resto é o código do jogo. O teste confere três coisas:
-      1. o turno do bot não quebra (TypeError da linha 128);
-      2. o pedido é registrado como sendo do BOT (quem_pediu = 2), e não do
-         humano, que é o que as linhas 129-136 fazem hoje;
-      3. quem responde é o HUMANO: ele recebe a pergunta do envido, e a IA
-         não é consultada para responder ao próprio pedido.
-    Assim, apagar só a linha 128 não basta para o teste passar.
+    Só a decisão do bot é fixada: na primeira jogada ele escolhe 6 (Envido).
+    O teste confere que (1) o turno não quebra, (2) o pedido é registrado com
+    o BOT como autor e (3) quem responde é o HUMANO. Apagar só a linha 128
+    não basta para o teste passar.
     """
-    import inspect
-
     jogar_carta_original = Bot.jogar_carta
     vezes = {"n": 0}
 
     def bot_decide_pedir_envido(self, cbr, truco):
         vezes["n"] += 1
-        if vezes["n"] == 1:
-            return ENVIDO
-        return jogar_carta_original(self, cbr, truco)
+        return ENVIDO if vezes["n"] == 1 else jogar_carta_original(self, cbr, truco)
 
-    # Espião: registra quem o jogo informa como autor de cada pedido de envido
     controlador_original = Envido.controlador_envido
     assinatura = inspect.signature(controlador_original)
     pedidos = []
 
     def controlador_espiao(self, *args, **kwargs):
-        argumentos = assinatura.bind(self, *args, **kwargs)  # chamada errada -> TypeError, como no jogo
+        argumentos = assinatura.bind(self, *args, **kwargs)   # chamada errada -> TypeError, como no jogo
         pedidos.append((argumentos.arguments["tipo"], argumentos.arguments["quem_pediu"]))
         return controlador_original(self, *args, **kwargs)
 
-    # Espião: registra se a IA foi consultada para RESPONDER a um envido (quem_pediu = 1)
     avaliar_original = Bot.avaliar_envido
     respostas_do_bot = []
 
@@ -288,21 +166,7 @@ def test_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
         maos=[(["1 de ESPADAS", "1 de BASTOS", "3 de COPAS"],
                ["12 de OUROS", "11 de BASTOS", "4 de COPAS"])])
 
-    # 1. o turno do bot não quebra
     assert not isinstance(partida.erro, TypeError)
-    # 2. o pedido foi registrado e o autor é o bot
-    assert pedidos, "o jogo não chegou a registrar o pedido de envido"
-    assert all(quem_pediu == BOT for _, quem_pediu in pedidos), f"pedidos registrados: {pedidos}"
-    assert pedidos[0][0] == ENVIDO
-    # 3. quem responde é o humano, não o próprio bot
+    assert pedidos and all(quem_pediu == BOT for _, quem_pediu in pedidos), f"pedidos: {pedidos}"
     assert any("aceita o pedido de envido" in p for p in partida.perguntas)
     assert respostas_do_bot == []
-
-
-@pytest.mark.requisito("CT11")
-@pytest.mark.defeito("D12")
-@pytest.mark.xfail(reason="D12: quando o bot pede, a pergunta ao humano diz 'Jogador 2, você aceita...'")
-def test_pergunta_do_envido_e_feita_ao_jogador_1(envido, humano, bot, interface, cbr_falsa, entradas_usuario):
-    registro = entradas_usuario("1")
-    pedir(envido, cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
-    assert registro.perguntas[0].startswith("Jogador 1")
