@@ -1,17 +1,12 @@
-"""
-Mensagens e exibição na tela (saída capturada com capsys).
-
-Casos de teste: CT28 a CT30.
-Requisito: RF14 (o jogador vê as cartas e as opções válidas a cada jogada).
-"""
+"""Opções, mensagens e desenho das cartas (CT28 a CT30)."""
 import pytest
 
 OPCOES_ENVIDO = ("[6] Envido", "[7] Real Envido", "[8] Falta Envido")
 
 
+# Confere as opções exibidas conforme as cartas na mão.
 @pytest.mark.requisito("CT28")
 def test_CT28_opcoes_mudam_conforme_a_mao(jogador_com_mao, interface, capsys):
-    # 3 cartas sem flor: cartas, truco, envidos e ir ao baralho; sem flor
     jogador = jogador_com_mao("1 de ESPADAS", "3 de COPAS", "4 de OUROS")
     jogador.mostrar_opcoes(interface)
     saida = capsys.readouterr().out
@@ -19,18 +14,17 @@ def test_CT28_opcoes_mudam_conforme_a_mao(jogador_com_mao, interface, capsys):
         assert texto in saida
     assert "[5] Flor" not in saida
 
-    # 2 cartas: o envido some
     jogador.jogar_carta(0)
     jogador.mostrar_opcoes(interface)
     saida = capsys.readouterr().out
     assert "[4] Truco" in saida and not any(t in saida for t in OPCOES_ENVIDO)
 
-    # 3 cartas do mesmo naipe: aparece a flor
     com_flor = jogador_com_mao("1 de COPAS", "5 de COPAS", "7 de COPAS")
     com_flor.mostrar_opcoes(interface)
     assert "[5] Flor" in capsys.readouterr().out
 
 
+# Verifica a moldura das mensagens.
 @pytest.mark.requisito("CT29")
 def test_CT29_moldura_das_mensagens(interface, capsys):
     interface.border_msg("abc")
@@ -39,6 +33,7 @@ def test_CT29_moldura_das_mensagens(interface, capsys):
     assert capsys.readouterr().out == "╔═════╗\n║ T   ║\n║ -   ║\n║ a   ║\n║ bcd ║\n╚═════╝\n"
 
 
+# Confere as mensagens de placar e de vencedores.
 @pytest.mark.requisito("CT29")
 def test_CT29_placar_e_vencedores(interface, capsys):
     interface.mostrar_placar_total("Renato", 3, "Lucas", 5)
@@ -52,6 +47,7 @@ def test_CT29_placar_e_vencedores(interface, capsys):
     assert "Lucas ganhou o jogo" in saida
 
 
+# Confere o desenho das cartas e os símbolos dos naipes.
 @pytest.mark.requisito("CT30")
 def test_CT30_desenho_das_cartas(interface):
     for carta, simbolo in (("1 de ESPADAS", "♠"), ("7 de OUROS", "♦"),

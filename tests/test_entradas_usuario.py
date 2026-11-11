@@ -1,10 +1,4 @@
-"""
-Entradas do usuário na tela principal (o jogo inteiro roda com teclado simulado).
-
-Casos de teste: CT31 a CT34 (defeitos D09 e D25).
-Requisitos: RF08 (ir ao baralho), RF15 (entrada inválida não encerra o jogo),
-UC01 (nomes dos jogadores).
-"""
+"""Entradas no menu principal (CT31 a CT34; D06 e D11)."""
 import pytest
 
 from conftest import EntradasEsgotadas
@@ -16,15 +10,17 @@ BOT = ["12 de OUROS", "11 de BASTOS", "4 de COPAS"]   # envido 4: o bot não ped
 MAOS = [(HUMANO, BOT)] * 3
 
 
+# Digita texto ao escolher a carta e espera uma nova tentativa.
 @pytest.mark.requisito("CT31")
-@pytest.mark.defeito("D09")
-@pytest.mark.xfail(reason="D09: int(input()) sem tratamento; texto na escolha da carta encerra o jogo com ValueError")
-def test_D09_texto_na_escolha_da_carta_pede_de_novo(executar_partida):
+@pytest.mark.defeito("D06")
+@pytest.mark.xfail(reason="D06: int(input()) sem tratamento; texto na escolha da carta encerra o jogo com ValueError")
+def test_D06_texto_na_escolha_da_carta_pede_de_novo(executar_partida):
     partida = executar_partida("Renato", "Lucas", "a", "0", maos=MAOS)
-    assert isinstance(partida.erro, EntradasEsgotadas)        # o jogo continuou
+    assert isinstance(partida.erro, EntradasEsgotadas)
     assert "Selecione um valor válido!" in partida.saida
 
 
+# Confere se uma opção inválida gera aviso e repete a pergunta.
 @pytest.mark.requisito("CT32")
 def test_CT32_opcao_inexistente_avisa_e_pergunta_de_novo(executar_partida):
     partida = executar_partida("Renato", "Lucas", "-1", "5", "12", "0", maos=MAOS)
@@ -33,25 +29,28 @@ def test_CT32_opcao_inexistente_avisa_e_pergunta_de_novo(executar_partida):
     assert "Renato jogou a carta: 1 de ESPADAS" in partida.saida
 
 
+# Verifica se o jogo rejeita o índice igual ao número de cartas.
 @pytest.mark.requisito("CT32")
-@pytest.mark.defeito("D25")
-@pytest.mark.xfail(reason="D25: o teste usa <= len(mão); o índice igual ao número de cartas dá IndexError")
-def test_D25_indice_igual_ao_numero_de_cartas(executar_partida):
+@pytest.mark.defeito("D11")
+@pytest.mark.xfail(reason="D11: o teste usa <= len(mão); o índice igual ao número de cartas dá IndexError")
+def test_D11_indice_igual_ao_numero_de_cartas(executar_partida):
     partida = executar_partida("Renato", "Lucas", "3", "0", maos=MAOS)
     assert not isinstance(partida.erro, IndexError)
     assert "Selecione um valor válido!" in partida.saida
 
 
+# Confere o ponto do bot e o início de uma nova mão após a desistência.
 @pytest.mark.requisito("CT33")
 def test_CT33_ir_ao_baralho_da_o_ponto_ao_bot_e_comeca_nova_mao(executar_partida, tmp_path):
     partida = executar_partida("Renato", "Lucas", "9", maos=MAOS)
     humano, bot = partida.estado["jogador1"], partida.estado["jogador2"]
     assert (humano.pontos, bot.pontos) == (0, 1)
     assert "Jogador Renato fugiu!" in partida.saida
-    assert len(humano.mao) == 3 and humano.rodadas == 0            # mão nova
-    assert (tmp_path / "jogadas.csv").exists()                     # mão registrada (RF18)
+    assert len(humano.mao) == 3 and humano.rodadas == 0
+    assert (tmp_path / "jogadas.csv").exists()
 
 
+# Verifica se o jogo recebe e exibe os nomes dos jogadores.
 @pytest.mark.requisito("CT34")
 def test_CT34_nomes_dos_jogadores(executar_partida):
     for nome_humano, nome_bot in (("Renato", "Lucas"), ("", "")):

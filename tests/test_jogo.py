@@ -1,9 +1,4 @@
-"""
-Rodadas: vencedor de cada rodada e ordem de jogada.
-
-Casos de teste: CT04, CT07 (defeito D02), CT08, CT09.
-Requisitos: RF03 (força), RF04 (empate), RF05 (melhor de 3), RF06 (quem joga primeiro).
-"""
+"""Vencedor da rodada e ordem de jogada (CT04, CT07 a CT09; D02)."""
 import itertools
 
 import pytest
@@ -19,17 +14,16 @@ ORDEM_MANILHAS = ["7 de OUROS", "7 de ESPADAS", "1 de BASTOS", "1 de ESPADAS"]
 
 
 def forca(carta):
-    """Força da carta segundo o README (independente do código do jogo)."""
+    """Calcula a força esperada pela ordem descrita no README."""
     nome = carta.retornar_carta()
     if nome in ORDEM_MANILHAS:
         return 100 + ORDEM_MANILHAS.index(nome)
     return ORDEM_COMUM.index(carta.retornar_numero())
 
 
+# Compara os pares de cartas para verificar se a de maior força vence.
 @pytest.mark.requisito("CT04")
 def test_CT04_carta_mais_forte_vence_nos_1560_confrontos():
-    """Percorre todos os pares ordenados de cartas de força diferente:
-    manilha x manilha, manilha x comum, comum x manilha e comum x comum."""
     jogo = Jogo()
     baralho = [Carta(n, s) for s in NAIPES for n in NUMEROS]
     erros = []
@@ -42,6 +36,7 @@ def test_CT04_carta_mais_forte_vence_nos_1560_confrontos():
     assert erros == []
 
 
+# Verifica se cartas de força igual resultam em empate.
 @pytest.mark.requisito("CT07")
 @pytest.mark.defeito("D02")
 @pytest.mark.xfail(reason="D02: cartas de mesma força não empatam; vence sempre a do jogador 1")
@@ -50,6 +45,7 @@ def test_D02_cartas_de_mesma_forca_empatam(nova_carta):
     assert Jogo().verificar_carta_vencedora(carta_1, carta_2) not in (carta_1, carta_2)
 
 
+# Confere o retorno do vencedor ao registrar uma rodada.
 @pytest.mark.requisito("CT08")
 def test_CT08_adicionar_rodada_retorna_o_vencedor():
     jogo = Jogo()
@@ -59,9 +55,10 @@ def test_CT08_adicionar_rodada_retorna_o_vencedor():
     assert jogo.adicionar_rodada(humano, bot, carta_1, carta_2, carta_1) == 1
     assert jogo.adicionar_rodada(humano, bot, carta_1, carta_2, carta_2) == 2
     assert jogo.adicionar_rodada(humano, bot, carta_1, carta_2, Carta(7, "COPAS")) == "Erro"
-    assert (humano.rodadas, bot.rodadas) == (1, 1)   # o "Erro" não soma rodada a ninguém
+    assert (humano.rodadas, bot.rodadas) == (1, 1)
 
 
+# Verifica se o vencedor da rodada joga primeiro.
 @pytest.mark.requisito("CT09")
 def test_CT09_vencedor_da_rodada_joga_primeiro():
     jogo = Jogo()

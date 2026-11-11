@@ -1,14 +1,4 @@
-"""
-Inteligência Artificial: CBR com os 100 vizinhos mais próximos.
-
-Casos de teste: CT35 a CT40 (defeitos D19, D20 e D22).
-Requisitos: RF16 (o bot decide pela situação mais parecida), RF17 (base de
-casos e 100 vizinhos), RNF02 (decisão em menos de 1 segundo).
-
-Usa a IA VERDADEIRA (fixture cbr_real), com a base de 27.515 casos. As
-situações de jogo são montadas com os próprios métodos da classe Dados, como
-o jogo faria, e por isso o teste conhece a situação e pode conferir a decisão.
-"""
+"""Decisões da CBR com a base real (CT35 a CT40; D08 a D10)."""
 import time
 
 import numpy as np
@@ -26,7 +16,6 @@ MAO_FRACA = ("4 de COPAS", "5 de OUROS", "6 de BASTOS")
 
 @pytest.fixture
 def situacao(cbr_real, bot_com_mao, nova_carta):
-    """Grava no registro da IA a mão do bot e a 1ª carta do humano; devolve o bot."""
     def _montar(mao_bot, carta_humano):
         bot = bot_com_mao(*mao_bot)
         cbr_real.dados.primeira_rodada(list(bot.pontuacao_cartas), list(bot.mao_rank),
@@ -39,7 +28,7 @@ def vizinhos(cbr):
     return cbr.nbrs.kneighbors(cbr.dados.retornar_registro().to_numpy().reshape(1, -1))
 
 
-# ---------------------------------------------------------------- CT35 / RF17
+# Valida a base de casos e a consulta dos 100 vizinhos.
 @pytest.mark.requisito("CT35")
 def test_CT35_base_de_casos_e_consulta_de_100_vizinhos(cbr_real):
     assert cbr_real.dataset.shape == (27515, 52)
@@ -50,16 +39,16 @@ def test_CT35_base_de_casos_e_consulta_de_100_vizinhos(cbr_real):
     assert list(distancias[0]) == sorted(distancias[0])
 
 
+# Confere se um caso da base recupera a si próprio com distância zero.
 @pytest.mark.requisito("CT35")
 def test_CT35_caso_da_base_recupera_ele_mesmo(cbr_real):
-    """Etapa de recuperação do CBR: um caso idêntico é o vizinho mais próximo, com distância 0."""
     for linha in (0, 13000, 27514):
         distancias, indices = cbr_real.nbrs.kneighbors(cbr_real.dataset.iloc[[linha]].to_numpy())
         assert distancias[0][0] == 0
         assert cbr_real.dataset.iloc[indices[0][0]].equals(cbr_real.dataset.iloc[linha])
 
 
-# ---------------------------------------------------------------- CT36 / RF16
+# Verifica se a IA retorna um índice válido da mão.
 @pytest.mark.requisito("CT36")
 def test_CT36_escolhe_sempre_uma_carta_da_mao(cbr_real, situacao):
     for mao in (MAO_MEDIA, MAO_FRACA):
@@ -70,9 +59,9 @@ def test_CT36_escolhe_sempre_uma_carta_da_mao(cbr_real, situacao):
     assert cbr_real.jogar_carta(3, [1]) == 0
 
 
+# Confere se a IA escolhe a carta mais próxima do valor de referência.
 @pytest.mark.requisito("CT36")
 def test_CT36_joga_a_carta_mais_proxima_do_valor_de_referencia(cbr_real, monkeypatch):
-    """Fixamos o valor mais comum entre os casos vencedores em 24; a IA deve jogar a carta mais próxima."""
     original = pd.Series.value_counts
 
     def referencia_24(serie, *args, **kwargs):
@@ -86,35 +75,38 @@ def test_CT36_joga_a_carta_mais_proxima_do_valor_de_referencia(cbr_real, monkeyp
     assert cbr_real.jogar_carta(1, [12, 52, 40]) == 0
 
 
+# Verifica se a IA consegue escolher uma carta com duas manilhas na mão.
 @pytest.mark.requisito("CT36")
-@pytest.mark.defeito("D19")
+@pytest.mark.defeito("D08")
 @pytest.mark.xfail(raises=IndexError,
-                   reason="D19: com duas manilhas, nenhum dos 100 vizinhos é caso vencedor e jogar_carta lança IndexError")
-def test_D19_ia_escolhe_carta_com_mao_de_duas_manilhas(cbr_real, situacao):
+                   reason="D08: com duas manilhas, nenhum dos 100 vizinhos é caso vencedor e jogar_carta lança IndexError")
+def test_D08_ia_escolhe_carta_com_mao_de_duas_manilhas(cbr_real, situacao):
     bot = situacao(MAO_FORTE, "3 de OUROS")
     assert cbr_real.jogar_carta(1, list(bot.pontuacao_cartas)) in (0, 1, 2)
 
 
-# ---------------------------------------------------------------- CT37 / RF16
+# Confere os retornos válidos do Truco e sua progressão conforme a qualidade
+# da mão.
 @pytest.mark.requisito("CT37")
 def test_CT37_resposta_ao_truco_valida_e_crescente(cbr_real, situacao):
     respostas = [cbr_real.truco("truco", 1, q) for q in range(0, 61, 5)]
     assert set(respostas) <= {0, 1, 2}
-    assert respostas == sorted(respostas)          # a resposta nunca diminui quando a mão melhora
-    assert respostas[0] == 0                       # mão sem qualidade foge
+    assert respostas == sorted(respostas)
+    assert respostas[0] == 0
     bot = situacao(MAO_FORTE, "4 de ESPADAS")
-    assert cbr_real.truco("truco", 1, bot.qualidade_mao) != 0   # mão forte não foge
+    assert cbr_real.truco("truco", 1, bot.qualidade_mao) != 0
 
 
+# Verifica se a IA evita aumentar o Truco com uma mão fraca.
 @pytest.mark.requisito("CT37")
-@pytest.mark.defeito("D20")
-@pytest.mark.xfail(reason="D20: a IA compara os rótulos (2 > 1), e não as contagens; com qualquer mão real ela aumenta")
-def test_D20_mao_fraca_nao_aumenta_o_truco(cbr_real, situacao):
+@pytest.mark.defeito("D09")
+@pytest.mark.xfail(reason="D09: a IA compara os rótulos (2 > 1), e não as contagens; com qualquer mão real ela aumenta")
+def test_D09_mao_fraca_nao_aumenta_o_truco(cbr_real, situacao):
     bot = situacao(MAO_FRACA, "3 de OUROS")
     assert cbr_real.truco("truco", 1, bot.qualidade_mao) != 2
 
 
-# ---------------------------------------------------------------- CT38 / RF16
+# Confere as respostas ao Envido e quando a pontuação leva a um pedido.
 @pytest.mark.requisito("CT38")
 def test_CT38_envido_respostas_validas_e_pedido_so_com_pontos(cbr_real):
     for pontos in (0, 25, 33):
@@ -126,7 +118,7 @@ def test_CT38_envido_respostas_validas_e_pedido_so_com_pontos(cbr_real):
         assert (cbr_real.envido("Envido", 2, pontos, False) in (6, 7, 8)) is pede, pontos
 
 
-# ---------------------------------------------------------------- CT39 / RNF02
+# Repete as decisões para a mesma situação e verifica o limite de um segundo.
 @pytest.mark.requisito("CT39")
 def test_CT39_mesma_situacao_mesma_decisao_em_menos_de_1_segundo(cbr_real):
     decisoes = {
@@ -139,11 +131,11 @@ def test_CT39_mesma_situacao_mesma_decisao_em_menos_de_1_segundo(cbr_real):
         inicio = time.perf_counter()
         resultados = {decidir(cbr_real) for _ in range(5)}
         assert (time.perf_counter() - inicio) / 5 < 1.0, nome
-        assert len(resultados) == 1, nome                          # sempre a mesma decisão
-        assert decidir(outra_ia) in resultados, nome               # outra instância decide igual
+        assert len(resultados) == 1, nome
+        assert decidir(outra_ia) in resultados, nome
 
 
-# ---------------------------------------------------------------- CT40 / RF16
+# Verifica se mudar a situação altera os vizinhos recuperados.
 @pytest.mark.requisito("CT40")
 def test_CT40_situacao_informada_muda_os_vizinhos(cbr_real, situacao):
     _, vizinhos_vazio = vizinhos(cbr_real)
@@ -152,11 +144,12 @@ def test_CT40_situacao_informada_muda_os_vizinhos(cbr_real, situacao):
     assert not np.array_equal(vizinhos_vazio, vizinhos_preenchido)
 
 
+# Verifica se os dados registrados na partida chegam à IA.
 @pytest.mark.requisito("CT40")
 @pytest.mark.cenario
-@pytest.mark.defeito("D22")
-@pytest.mark.xfail(reason="D22: a IA tem a sua própria instância de Dados; a situação gravada pelo jogo nunca chega a ela")
-def test_D22_ia_recebe_a_situacao_da_partida(executar_partida):
+@pytest.mark.defeito("D10")
+@pytest.mark.xfail(reason="D10: a IA tem a sua própria instância de Dados; a situação gravada pelo jogo nunca chega a ela")
+def test_D10_ia_recebe_a_situacao_da_partida(executar_partida):
     partida = executar_partida(
         "Renato", "Lucas", "0",
         maos=[(["3 de COPAS", "5 de OUROS", "6 de BASTOS"],

@@ -1,11 +1,4 @@
-"""
-Truco.
-
-Casos de teste: CT18 a CT23 (defeito D05).
-Requisito: RF07 (truco = 2, retruco = 3, vale 4 = 4; a recusa entrega o valor
-anterior; o mesmo jogador não aumenta duas vezes seguidas).
-quem_pediu = 1 é o humano (teclado simulado) e 2 é o bot (IA dublê).
-"""
+"""Pedidos, respostas e pontuação de Truco (CT18 a CT23; D04)."""
 import pytest
 
 from truco.truco import Truco
@@ -22,27 +15,30 @@ def jogadores(jogador_com_mao, bot_com_mao):
     return _criar
 
 
+# Confere o retorno de aceitação quando o humano pede Truco e o bot aceita.
 @pytest.mark.requisito("CT18")
 @pytest.mark.requisito("CT23")
 def test_CT18_humano_pede_truco_e_o_bot_aceita(jogadores, cbr_falsa):
     humano, bot = jogadores()
     truco, ia = Truco(), cbr_falsa(truco=1)
-    assert truco.retornar_valor_aposta() == 1                  # valor inicial da mão
+    assert truco.retornar_valor_aposta() == 1
     assert truco.controlador_truco(ia, None, HUMANO, humano, bot) is True
     assert truco.estado_atual == "truco"
-    assert ia.chamadas == [("truco", "truco", HUMANO, bot.qualidade_mao)]   # IA recebe a mão do bot
+    assert ia.chamadas == [("truco", "truco", HUMANO, bot.qualidade_mao)]
 
 
+# Verifica se o Truco aceito aumenta o valor da mão para dois pontos.
 @pytest.mark.requisito("CT18")
-@pytest.mark.defeito("D05")
-@pytest.mark.xfail(reason="D05: truco aceito não atualiza o valor da mão (continua 1)")
-def test_D05_truco_aceito_vale_2_pontos(jogadores, cbr_falsa):
+@pytest.mark.defeito("D04")
+@pytest.mark.xfail(reason="D04: truco aceito não atualiza o valor da mão (continua 1)")
+def test_D04_truco_aceito_vale_2_pontos(jogadores, cbr_falsa):
     humano, bot = jogadores()
     truco = Truco()
     truco.controlador_truco(cbr_falsa(truco=1), None, HUMANO, humano, bot)
     assert truco.retornar_valor_aposta() == 2
 
 
+# Confere os valores de três pontos para Retruco e quatro para Vale 4.
 @pytest.mark.requisito("CT19")
 def test_CT19_retruco_vale_3_e_vale_4_vale_4(jogadores, cbr_falsa, entradas_usuario):
     humano, bot = jogadores()
@@ -58,6 +54,7 @@ def test_CT19_retruco_vale_3_e_vale_4_vale_4(jogadores, cbr_falsa, entradas_usua
     assert truco.retornar_valor_aposta() == 4
 
 
+# Verifica se a recusa concede a quem pediu o valor anterior da aposta.
 @pytest.mark.requisito("CT20")
 def test_CT20_recusa_entrega_o_valor_anterior_a_quem_pediu(jogadores, cbr_falsa, entradas_usuario):
     # truco recusado pelo bot: humano +1
@@ -76,6 +73,7 @@ def test_CT20_recusa_entrega_o_valor_anterior_a_quem_pediu(jogadores, cbr_falsa,
     assert (humano.pontos, bot.pontos) == (3, 0)
 
 
+# Confere o bloqueio de dois aumentos seguidos pelo mesmo jogador.
 @pytest.mark.requisito("CT21")
 def test_CT21_mesmo_jogador_nao_aumenta_duas_vezes_seguidas(jogadores, cbr_falsa):
     humano, bot = jogadores()
@@ -86,10 +84,10 @@ def test_CT21_mesmo_jogador_nao_aumenta_duas_vezes_seguidas(jogadores, cbr_falsa
     assert ia.chamadas == []
 
 
+# Verifica se uma resposta inválida ao Truco faz a pergunta se repetir.
 @pytest.mark.requisito("CT22")
 @pytest.mark.entrada
 def test_CT22_humano_responde_truco_do_bot_com_opcao_invalida(jogadores, cbr_falsa, entradas_usuario):
-    """Laço 'while escolha not in [0, 1, 2]': duas respostas inválidas e a válida."""
     humano, bot = jogadores()
     registro = entradas_usuario("3", "9", "1")
     assert Truco().controlador_truco(cbr_falsa(), None, BOT, humano, bot) is True

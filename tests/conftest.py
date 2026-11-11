@@ -1,22 +1,4 @@
-"""
-Configuração compartilhada dos testes do Truco Gaudério com CBR.
-
-Trabalho de Qualidade de Software 2026/02 - Renato e Lucas.
-
-Este arquivo é carregado automaticamente pelo PyTest e oferece as "fixtures"
-(peças reutilizáveis) usadas por todos os testes:
-
-    nova_carta / nova_mao       -> cria cartas a partir de texto ("1 de ESPADAS")
-    baralho_fixo                -> baralho com ordem de cartas conhecida
-    jogador_com_mao / bot_com_mao -> jogador e bot com mãos definidas pelo teste
-    entradas_usuario            -> simula o que o usuário digita no input()
-    CbrFalsa / cbr_falsa        -> IA "dublê", com respostas controladas pelo teste
-    cbr_real                    -> a IA verdadeira, com a base de casos completa
-    executar_partida            -> roda o jogo inteiro (truco/__main__.py)
-
-Regra do trabalho: o código do jogo NÃO é alterado. Tudo o que é preciso para
-testá-lo fica aqui, do lado dos testes.
-"""
+"""Fixtures compartilhadas pelos testes do Truco Gaudério."""
 import builtins
 import os
 import random
@@ -40,26 +22,11 @@ from truco.jogador import Jogador  # noqa: E402
 ARQUIVO_BASE_CASOS = RAIZ / "dbtrucoimitacao_maos.csv"
 
 
-# ---------------------------------------------------------------------------
-# Adaptador de leitura de CSV
-# ---------------------------------------------------------------------------
 _read_csv_original = pd.read_csv
 
 
 def read_csv_compativel(caminho, *args, **kwargs):
-    """Substituto de pandas.read_csv usado apenas durante os testes.
-
-    O jogo abre os CSVs por caminho relativo ('dbtrucoimitacao_maos.csv'). Os
-    testes rodam numa pasta temporária, para que o 'jogadas.csv' gravado pelo
-    jogo não suje o projeto. Então o adaptador:
-      1. procura o arquivo na raiz do projeto quando ele não existe na pasta atual;
-      2. quando quem chamou não informou o separador, detecta tabulação ou vírgula
-         pela primeira linha.
-
-    Histórico: o item 2 contornava o defeito D01 (a base é separada por
-    tabulação e dados.py lia com vírgula). O grupo corrigiu dados.py com
-    sep="\\t", e o teste test_CT44_* comprova a correção sem o adaptador.
-    """
+    """Busca CSVs na raiz quando preciso e detecta o separador se ele não for informado."""
     caminho_real = Path(caminho)
     if not caminho_real.is_absolute() and not caminho_real.exists():
         caminho_real = RAIZ / caminho_real
@@ -71,12 +38,7 @@ def read_csv_compativel(caminho, *args, **kwargs):
 
 @pytest.fixture(autouse=True)
 def ambiente_do_jogo(request, monkeypatch, tmp_path):
-    """Executada antes de TODOS os testes.
-
-    - Testes comuns rodam numa pasta temporária, com o adaptador de CSV ativo.
-    - Testes marcados com @pytest.mark.sem_adaptador rodam na raiz do projeto
-      com o pandas original, exatamente como o usuário executaria o jogo.
-    """
+    """Isola a gravação de jogadas.csv. Testes sem adaptador rodam na raiz."""
     if request.node.get_closest_marker("sem_adaptador"):
         monkeypatch.chdir(RAIZ)
     else:
@@ -85,35 +47,25 @@ def ambiente_do_jogo(request, monkeypatch, tmp_path):
     yield
 
 
-# ---------------------------------------------------------------------------
-# Cartas, mãos e baralho
-# ---------------------------------------------------------------------------
 def criar_carta(texto):
-    """'1 de ESPADAS' -> Carta(1, 'ESPADAS')."""
     numero, naipe = texto.split(" de ")
     return Carta(int(numero), naipe.strip().upper())
 
 
 @pytest.fixture
 def nova_carta():
-    """Fábrica de cartas: nova_carta('7 de OUROS')."""
     return criar_carta
 
 
 @pytest.fixture
 def nova_mao():
-    """Fábrica de mãos: nova_mao('1 de ESPADAS', '3 de COPAS', '4 de OUROS')."""
     def _fabrica(*textos):
         return [criar_carta(t) for t in textos]
     return _fabrica
 
 
 class BaralhoFixo(Baralho):
-    """Baralho cujas cartas saem exatamente na ordem informada.
-
-    retirar_carta() usa pop() (tira do fim da lista); por isso a ordem é
-    invertida ao montar o baralho.
-    """
+    """Entrega as cartas na ordem informada, embora a retirada use pop()."""
 
     def __init__(self, textos):
         super().__init__()
@@ -122,13 +74,11 @@ class BaralhoFixo(Baralho):
 
 @pytest.fixture
 def baralho_fixo():
-    """Fábrica: baralho_fixo(['1 de ESPADAS', '3 de COPAS', ...])."""
     return BaralhoFixo
 
 
 @pytest.fixture
 def jogador_com_mao():
-    """Fábrica: jogador humano com a mão escolhida pelo teste."""
     def _fabrica(*textos, nome="Renato"):
         jogador = Jogador(nome)
         jogador.criar_mao(BaralhoFixo(list(textos)))
@@ -138,7 +88,6 @@ def jogador_com_mao():
 
 @pytest.fixture
 def bot_com_mao():
-    """Fábrica: bot com a mão escolhida pelo teste (já calcula envido, flor e qualidade)."""
     def _fabrica(*textos, nome="Bot"):
         bot = Bot(nome)
         bot.criar_mao(BaralhoFixo(list(textos)))
@@ -151,26 +100,13 @@ def interface():
     return Interface()
 
 
-# ---------------------------------------------------------------------------
-# Entradas do usuário (input simulado)
-# ---------------------------------------------------------------------------
 class EntradasEsgotadas(Exception):
-    """O jogo pediu mais entradas do que o teste forneceu."""
+    """O jogo solicitou mais entradas que as fornecidas."""
 
 
 @pytest.fixture
 def entradas_usuario(monkeypatch):
-    """Simula o teclado.
-
-    Uso:
-        registro = entradas_usuario("Renato", "Bot", "0")
-        ... código que chama input() ...
-        registro.perguntas  -> textos exibidos por cada input()
-        registro.restantes  -> entradas não consumidas
-
-    Se o código pedir mais entradas do que as fornecidas, lança
-    EntradasEsgotadas (útil para detectar laços infinitos de validação).
-    """
+    """Substitui input() por respostas fixas e registra as perguntas."""
     def _definir(*respostas):
         registro = SimpleNamespace(perguntas=[], restantes=[str(r) for r in respostas])
 
@@ -186,14 +122,8 @@ def entradas_usuario(monkeypatch):
     return _definir
 
 
-# ---------------------------------------------------------------------------
-# Inteligência artificial
-# ---------------------------------------------------------------------------
 class CbrFalsa:
-    """Dublê da classe Cbr: devolve respostas fixas e registra as chamadas.
-
-    Permite testar Truco, Envido, Flor e Bot sem depender da base de casos.
-    """
+    """Devolve respostas fixas ou em sequência e registra as chamadas."""
 
     def __init__(self, truco=1, envido=1, jogar_carta=0, flor=False):
         self.resposta_truco = truco
@@ -203,7 +133,6 @@ class CbrFalsa:
         self.chamadas = []
 
     def _proxima(self, valor):
-        # Aceita um valor fixo ou uma lista de valores (um por chamada)
         if isinstance(valor, list):
             return valor.pop(0)
         return valor
@@ -227,13 +156,12 @@ class CbrFalsa:
 
 @pytest.fixture
 def cbr_falsa():
-    """Fábrica: cbr_falsa(truco=2, envido=0, ...)."""
     return CbrFalsa
 
 
 @pytest.fixture(scope="session")
 def _cbr_carregada():
-    """Carrega a IA verdadeira uma única vez por execução (leva alguns segundos)."""
+    """Carrega a CBR real uma vez por sessão."""
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(pd, "read_csv", read_csv_compativel)
         mp.chdir(RAIZ)
@@ -243,30 +171,14 @@ def _cbr_carregada():
 
 @pytest.fixture
 def cbr_real(_cbr_carregada):
-    """IA verdadeira, com o registro do caso atual zerado antes de cada teste."""
+    """Zera o registro da CBR real antes de cada teste que usa a fixture."""
     _cbr_carregada.dados.registro = _cbr_carregada.dados.carregar_modelo_zerado()
     return _cbr_carregada
 
 
-# ---------------------------------------------------------------------------
-# Partida completa (cenários de uso)
-# ---------------------------------------------------------------------------
 @pytest.fixture
 def executar_partida(entradas_usuario, monkeypatch, capsys, _cbr_carregada):
-    """Executa truco/__main__.py como se fosse 'python -m truco'.
-
-    Parâmetros:
-        respostas : tudo o que o usuário digita, em ordem
-        seed      : semente do embaralhamento (partida reproduzível)
-        maos      : lista de pares (cartas_jogador1, cartas_bot) para fixar as
-                    mãos de cada "mão" da partida, na ordem em que são dadas
-
-    Retorna um objeto com:
-        saida     : tudo o que foi impresso na tela
-        perguntas : textos de cada input()
-        estado    : variáveis globais do jogo (jogador1, jogador2, truco...)
-        erro      : exceção que interrompeu o jogo (None se terminou)
-    """
+    """Roda o jogo com entradas e mãos controladas e retorna saída, perguntas, estado e erro."""
     def _executar(*respostas, seed=0, maos=None):
         random.seed(seed)
         fila_maos = list(maos or [])
@@ -297,7 +209,7 @@ def executar_partida(entradas_usuario, monkeypatch, capsys, _cbr_carregada):
             exec(codigo, estado)
         except EntradasEsgotadas as e:
             erro = e
-        except Exception as e:  # o teste decide se o erro era esperado
+        except Exception as e:
             erro = e
         return SimpleNamespace(saida=capsys.readouterr().out, perguntas=registro.perguntas,
                                estado=estado, erro=erro)
