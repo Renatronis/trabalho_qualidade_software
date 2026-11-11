@@ -9,7 +9,7 @@ class Dados():
 
     def tratamento_inicial_df(self):
         """Tratamento de dados do dataframe que será utilizado para alimentar a base de casos"""
-        df = pd.read_csv('dbtrucoimitacao_maos.csv', usecols=self.colunas, index_col='idMao').fillna(-100)
+        df = pd.read_csv('dbtrucoimitacao_maos.csv', sep="\t", usecols=self.colunas, index_col='idMao').fillna(-100)
         colunas_string = [
             'naipeCartaAltaRobo', 'naipeCartaMediaRobo','naipeCartaBaixaRobo', 'naipeCartaAltaHumano','naipeCartaMediaHumano', 'naipeCartaBaixaHumano','naipePrimeiraCartaRobo', 'naipePrimeiraCartaHumano',	'naipeSegundaCartaRobo', 'naipeSegundaCartaHumano','naipeTerceiraCartaRobo', 'naipeTerceiraCartaHumano',
             ]
