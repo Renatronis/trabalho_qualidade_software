@@ -41,7 +41,7 @@ ARQUIVO_BASE_CASOS = RAIZ / "dbtrucoimitacao_maos.csv"
 
 
 # ---------------------------------------------------------------------------
-# Adaptador de leitura de CSV (contorno do defeito D01)
+# Adaptador de leitura de CSV
 # ---------------------------------------------------------------------------
 _read_csv_original = pd.read_csv
 
@@ -49,15 +49,16 @@ _read_csv_original = pd.read_csv
 def read_csv_compativel(caminho, *args, **kwargs):
     """Substituto de pandas.read_csv usado apenas durante os testes.
 
-    Defeito D01: a base de casos 'dbtrucoimitacao_maos.csv' é separada por
-    TABULAÇÃO, mas truco/dados.py a lê com o separador padrão (vírgula). Sem
-    este adaptador o jogo nem inicia (ValueError: Usecols do not match columns).
+    O jogo abre os CSVs por caminho relativo ('dbtrucoimitacao_maos.csv'). Os
+    testes rodam numa pasta temporária, para que o 'jogadas.csv' gravado pelo
+    jogo não suje o projeto. Então o adaptador:
+      1. procura o arquivo na raiz do projeto quando ele não existe na pasta atual;
+      2. quando quem chamou não informou o separador, detecta tabulação ou vírgula
+         pela primeira linha.
 
-    O adaptador faz duas coisas, sem mudar o código do jogo:
-      1. detecta o separador (tabulação ou vírgula) pela primeira linha;
-      2. se o caminho relativo não existir na pasta atual, procura na raiz do
-         projeto. Assim os testes podem rodar numa pasta temporária e o
-         arquivo 'jogadas.csv' gravado pelo jogo não suja o projeto.
+    Histórico: o item 2 contornava o defeito D01 (a base é separada por
+    tabulação e dados.py lia com vírgula). O grupo corrigiu dados.py com
+    sep="\\t", e o teste test_CT44_* comprova a correção sem o adaptador.
     """
     caminho_real = Path(caminho)
     if not caminho_real.is_absolute() and not caminho_real.exists():
@@ -251,7 +252,7 @@ def cbr_real(_cbr_carregada):
 # Partida completa (cenários de uso)
 # ---------------------------------------------------------------------------
 @pytest.fixture
-def executar_partida(entradas_usuario, monkeypatch, capsys):
+def executar_partida(entradas_usuario, monkeypatch, capsys, _cbr_carregada):
     """Executa truco/__main__.py como se fosse 'python -m truco'.
 
     Parâmetros:
@@ -282,6 +283,9 @@ def executar_partida(entradas_usuario, monkeypatch, capsys):
                 self.cartas = resto + list(reversed(escolhidas))
 
         monkeypatch.setattr(Baralho, "embaralhar", embaralhar_controlado)
+        # A IA verdadeira já carregada é reaproveitada (evita reler 14 MB por partida)
+        _cbr_carregada.dados.registro = _cbr_carregada.dados.carregar_modelo_zerado()
+        monkeypatch.setattr("truco.cbr.Cbr", lambda: _cbr_carregada)
         registro = entradas_usuario(*respostas)
 
         estado = {"__name__": "__main__", "__package__": "truco",

@@ -232,8 +232,39 @@ class TestBloqueiosDoEnvido:
 
 # ---------------------------------------------------------------- CT17 / RF09
 @pytest.mark.requisito("CT17")
+@pytest.mark.cenario
+@pytest.mark.lento
 @pytest.mark.defeito("D04")
-@pytest.mark.xfail(raises=TypeError, reason="D04: turno_do_bot chama controlador_envido com os argumentos errados")
-def test_bot_pede_envido_na_sua_vez(envido, humano, bot, interface):
-    # Chamada copiada literalmente de truco/__main__.py, linha 128
-    envido.controlador_envido('Envido', 2, humano, bot, interface)
+@pytest.mark.xfail(reason="D04: turno_do_bot chama controlador_envido com os argumentos errados (TypeError)")
+def test_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
+    """Executa o turno REAL do bot (truco/__main__.py, linhas 125-136).
+
+    Só a decisão do bot é fixada: na primeira vez que ele joga, escolhe 6
+    (Envido). Todo o resto, inclusive a chamada defeituosa, é o código do jogo.
+    Quando o D04 for corrigido, este teste passa sem precisar de mudança.
+    """
+    jogar_carta_original = Bot.jogar_carta
+    vezes = {"n": 0}
+
+    def bot_decide_pedir_envido(self, cbr, truco):
+        vezes["n"] += 1
+        if vezes["n"] == 1:
+            return ENVIDO
+        return jogar_carta_original(self, cbr, truco)
+
+    monkeypatch.setattr(Bot, "jogar_carta", bot_decide_pedir_envido)
+    partida = executar_partida(
+        "Renato", "Lucas", "0", "1", "1", "1",
+        maos=[(["1 de ESPADAS", "1 de BASTOS", "3 de COPAS"],
+               ["12 de OUROS", "11 de BASTOS", "4 de COPAS"])])
+    assert not isinstance(partida.erro, TypeError)
+    assert "Jogador pediu Envido!" in partida.saida
+
+
+@pytest.mark.requisito("CT11")
+@pytest.mark.defeito("D12")
+@pytest.mark.xfail(reason="D12: quando o bot pede, a pergunta ao humano diz 'Jogador 2, você aceita...'")
+def test_pergunta_do_envido_e_feita_ao_jogador_1(envido, humano, bot, interface, cbr_falsa, entradas_usuario):
+    registro = entradas_usuario("1")
+    pedir(envido, cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
+    assert registro.perguntas[0].startswith("Jogador 1")
