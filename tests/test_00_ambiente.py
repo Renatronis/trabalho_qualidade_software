@@ -5,11 +5,14 @@ Garantem que a infraestrutura de testes funciona antes de escrever os testes
 de verdade: imports, fixtures, simulação de teclado, IA e partida completa.
 """
 import importlib
+import os
+import subprocess
+import sys
 
 import pandas as pd
 import pytest
 
-from conftest import ARQUIVO_BASE_CASOS, EntradasEsgotadas
+from conftest import ARQUIVO_BASE_CASOS, RAIZ, EntradasEsgotadas
 
 MODULOS = ["baralho", "bot", "carta", "cbr", "dados", "envido", "flor",
            "interface", "jogador", "jogo", "pontos", "truco"]
@@ -92,11 +95,33 @@ def test_partida_com_maos_fixas(executar_partida):
         "7 de OUROS", "2 de BASTOS", "5 de COPAS"]
 
 
-@pytest.mark.defeito("D01")
+@pytest.mark.requisito("CT44")
 @pytest.mark.sem_adaptador
-@pytest.mark.xfail(raises=ValueError, reason="D01: base de casos separada por TAB, lida como CSV de vírgula")
-def test_D01_jogo_carrega_base_de_casos_sem_adaptador():
-    """Como o usuário roda o jogo (python -m truco): a base de casos deveria carregar."""
+def test_CT44_jogo_carrega_base_de_casos_sem_adaptador():
+    """D01 (corrigido pelo grupo): a base de casos carrega com o pandas original,
+    a partir da raiz do projeto, exatamente como o jogo faz."""
     assert pd.read_csv.__module__.startswith("pandas")  # pandas original, sem adaptador
     from truco.dados import Dados
-    Dados()
+    casos = Dados().retornar_casos()
+    assert len(casos) > 20000
+    assert casos.isna().sum().sum() == 0
+
+
+@pytest.mark.requisito("CT44")
+@pytest.mark.sem_adaptador
+@pytest.mark.lento
+def test_CT44_python_m_truco_inicia():
+    """RNF01: 'python -m truco' abre o jogo, pede os nomes e mostra as cartas.
+
+    O jogo roda num processo separado. Depois dos dois nomes a entrada acaba,
+    então o jogo para com EOFError na primeira pergunta seguinte (a carta, ou
+    a resposta a um envido do bot, conforme as cartas sorteadas).
+    """
+    resultado = subprocess.run(
+        [sys.executable, "-m", "truco"], cwd=RAIZ, input="Renato\nLucas\n",
+        capture_output=True, text=True, encoding="utf-8", timeout=120,
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    assert "Nome Jogador 2 (Bot):" in resultado.stdout
+    assert "[9] Ir ao baralho" in resultado.stdout   # cartas e opções exibidas
+    ultima_linha = resultado.stderr.strip().splitlines()[-1]
+    assert ultima_linha.startswith("EOFError")       # parou só por falta de entrada
