@@ -235,14 +235,22 @@ class TestBloqueiosDoEnvido:
 @pytest.mark.cenario
 @pytest.mark.lento
 @pytest.mark.defeito("D04")
-@pytest.mark.xfail(reason="D04: turno_do_bot chama controlador_envido com os argumentos errados (TypeError)")
+@pytest.mark.xfail(reason="D04: turno_do_bot chama controlador_envido com os argumentos errados (TypeError) "
+                          "e, em seguida, registra o pedido como sendo do humano (quem_pediu=1)")
 def test_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
     """Executa o turno REAL do bot (truco/__main__.py, linhas 125-136).
 
     Só a decisão do bot é fixada: na primeira vez que ele joga, escolhe 6
-    (Envido). Todo o resto, inclusive a chamada defeituosa, é o código do jogo.
-    Quando o D04 for corrigido, este teste passa sem precisar de mudança.
+    (Envido). Todo o resto é o código do jogo. O teste confere três coisas:
+      1. o turno do bot não quebra (TypeError da linha 128);
+      2. o pedido é registrado como sendo do BOT (quem_pediu = 2), e não do
+         humano, que é o que as linhas 129-136 fazem hoje;
+      3. quem responde é o HUMANO: ele recebe a pergunta do envido, e a IA
+         não é consultada para responder ao próprio pedido.
+    Assim, apagar só a linha 128 não basta para o teste passar.
     """
+    import inspect
+
     jogar_carta_original = Bot.jogar_carta
     vezes = {"n": 0}
 
@@ -252,13 +260,43 @@ def test_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
             return ENVIDO
         return jogar_carta_original(self, cbr, truco)
 
+    # Espião: registra quem o jogo informa como autor de cada pedido de envido
+    controlador_original = Envido.controlador_envido
+    assinatura = inspect.signature(controlador_original)
+    pedidos = []
+
+    def controlador_espiao(self, *args, **kwargs):
+        argumentos = assinatura.bind(self, *args, **kwargs)  # chamada errada -> TypeError, como no jogo
+        pedidos.append((argumentos.arguments["tipo"], argumentos.arguments["quem_pediu"]))
+        return controlador_original(self, *args, **kwargs)
+
+    # Espião: registra se a IA foi consultada para RESPONDER a um envido (quem_pediu = 1)
+    avaliar_original = Bot.avaliar_envido
+    respostas_do_bot = []
+
+    def avaliar_espiao(self, cbr, tipo, quem_pediu, pontos_totais_adversario):
+        if quem_pediu == HUMANO:
+            respostas_do_bot.append(tipo)
+        return avaliar_original(self, cbr, tipo, quem_pediu, pontos_totais_adversario)
+
     monkeypatch.setattr(Bot, "jogar_carta", bot_decide_pedir_envido)
+    monkeypatch.setattr(Envido, "controlador_envido", controlador_espiao)
+    monkeypatch.setattr(Bot, "avaliar_envido", avaliar_espiao)
+
     partida = executar_partida(
         "Renato", "Lucas", "0", "1", "1", "1",
         maos=[(["1 de ESPADAS", "1 de BASTOS", "3 de COPAS"],
                ["12 de OUROS", "11 de BASTOS", "4 de COPAS"])])
+
+    # 1. o turno do bot não quebra
     assert not isinstance(partida.erro, TypeError)
-    assert "Jogador pediu Envido!" in partida.saida
+    # 2. o pedido foi registrado e o autor é o bot
+    assert pedidos, "o jogo não chegou a registrar o pedido de envido"
+    assert all(quem_pediu == BOT for _, quem_pediu in pedidos), f"pedidos registrados: {pedidos}"
+    assert pedidos[0][0] == ENVIDO
+    # 3. quem responde é o humano, não o próprio bot
+    assert any("aceita o pedido de envido" in p for p in partida.perguntas)
+    assert respostas_do_bot == []
 
 
 @pytest.mark.requisito("CT11")
