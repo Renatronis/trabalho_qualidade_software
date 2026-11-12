@@ -94,3 +94,14 @@ def test_CT22_humano_responde_truco_do_bot_com_opcao_invalida(jogadores, cbr_fal
     assert len(registro.perguntas) == 3
     for opcao in ("[0] Recusar", "[1] Aceitar", "[2] Aumentar Aposta"):
         assert opcao in registro.perguntas[0]
+
+
+# Confere quem fugiu depois que o bot recusa o Truco pedido pelo humano.
+@pytest.mark.requisito("CT23")
+@pytest.mark.defeito("D14")
+@pytest.mark.xfail(reason="D14: retornar_quem_fugiu devolve o próprio método, e jogador_fugiu nunca é preenchido")
+def test_D14_retornar_quem_fugiu(jogadores, cbr_falsa):
+    humano, bot = jogadores()
+    truco = Truco()
+    truco.controlador_truco(cbr_falsa(truco=0), None, HUMANO, humano, bot)
+    assert truco.retornar_quem_fugiu() == BOT

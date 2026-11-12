@@ -1,0 +1,285 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{needspace}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\renewcommand{\arraystretch}{1.15}
+\definecolor{cabecalho}{gray}{0.85}
+\definecolor{faixa}{gray}{0.93}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% Um teste do inventário: nome em fonte monoespaçada, descrição e resultado
+\newcommand{\teste}[3]{\par\noindent\begin{minipage}{\textwidth}\texttt{#1}\\#2 \emph{(#3).}\end{minipage}\par\vspace{0.15em}}
+
+\begin{document}
+
+\begin{center}
+  \includegraphics[width=2.7cm]{brasao_ufsm.png}\par\vspace{0.5em}
+  {\bfseries Universidade Federal de Santa Maria}\\
+  Curso de Sistemas de Informação\\
+  Disciplina de Qualidade de Software -- 2026/02\par\vspace{0.9em}
+  {\Large\bfseries Relatório de testes automatizados do Truco Gaudério}\par\vspace{1em}
+  Lucas Salvini Bertol e Renato Marquioro\\
+  Professor Luis Alvaro\par\vspace{0.5em}
+  Santa Maria, RS -- novembro de 2026
+\end{center}
+
+\section{Introdução}
+
+O trabalho avaliou o jogo Truco Gaudério, implementado em Python. O jogo permite uma partida entre uma pessoa e um bot que usa raciocínio baseado em casos (CBR). O relatório apresenta os requisitos do jogo, os cenários de uso, os testes implementados e os resultados obtidos com a suíte de testes.
+
+\section{Metodologia}
+
+A suíte usa Pytest. Os testes unitários verificam regras, retornos de funções e respostas a diferentes parâmetros. Os testes de cenário executam o fluxo do jogo com mãos fixas e entradas simuladas. Para avaliar a IA, há testes que consultam a base real de casos e testes que controlam a resposta do bot para isolar o comportamento do jogo.
+
+A suíte cobre as cinco categorias obrigatórias do enunciado e tem pelo menos um teste para cada partição das entradas do usuário: valores válidos, última opção válida, números fora do intervalo e texto. A tabela identifica exemplos de cada categoria.
+
+\rowcolors{2}{faixa}{white}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.36\textwidth}L}
+\toprule
+\rowcolor{cabecalho}\textbf{Categoria} & \textbf{Exemplos na suíte de testes} \\
+\midrule
+Requisitos e cenários de uso & CT42 e CT43 verificam mãos decididas em duas e em três rodadas, a vitória de cada jogador e o fim da partida. \\
+Chamadas com parâmetros variados & CT04 e CT10 comparam cartas e calculam Envido com entradas variadas. \\
+Entradas do usuário & CT11, CT22 e CT32 simulam respostas válidas e inválidas. Os testes do menu principal percorrem as opções de [0] a [9]. \\
+Retornos de funções & CT08, CT18 e CT37 verificam o vencedor, a aceitação do Truco e a resposta da IA. \\
+Inteligência artificial & CT35 a CT40 consultam a base e exercitam as decisões da CBR. \\
+\bottomrule
+\end{tabularx}
+
+\section{Requisitos do jogo}
+
+Os requisitos foram levantados a partir do README, do código, da planilha de codificação e dos comentários do autor. O limite de tempo de resposta da IA é um critério definido pelo grupo.
+
+\rowcolors{2}{faixa}{white}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.09\textwidth}>{\raggedright\arraybackslash}p{0.84\textwidth}}
+\toprule
+\rowcolor{cabecalho}\textbf{ID} & \textbf{Requisito funcional} \\
+\midrule
+\endhead
+RF01 & Usar um baralho espanhol de 40 cartas, com os números de 1 a 7 e de 10 a 12 em cada um dos quatro naipes. \\
+RF02 & Distribuir automaticamente três cartas aleatórias a cada jogador. \\
+RF03 & Ordenar as cartas comuns por força (4, 5, 6, 7, 10, 11, 12, 1, 2 e 3). As manilhas, da menor para a maior, são 7 de Ouros, 7 de Espadas, 1 de Bastos e 1 de Espadas. \\
+RF04 & Dar a vitória da rodada à carta mais forte. Cartas de mesma força empatam. \\
+RF05 & Disputar cada mão em melhor de três rodadas. Duas vitórias encerram a mão, que vale um ponto sem Truco. \\
+RF06 & Dar ao vencedor da rodada o primeiro turno da rodada seguinte. \\
+RF07 & Atribuir 2 pontos ao Truco aceito, 3 ao Retruco e 4 ao Vale 4. Na recusa, quem pediu recebe o valor anterior. O mesmo jogador não pode aumentar duas vezes seguidas. \\
+RF08 & Ao ir ao baralho, encerrar a mão e conceder ao adversário o valor atual da aposta. \\
+RF09 & Permitir Envido na primeira rodada, com três cartas. Envido vale 2, Real Envido vale 5 e Falta Envido vale 12 menos os pontos do adversário. Na recusa, o autor do pedido recebe 1, 2 ou 5 pontos, respectivamente. \\
+RF10 & Calcular o Envido somando 20 a duas cartas do mesmo naipe. Sem par, usar a maior carta. As figuras 10, 11 e 12 valem zero nesse cálculo. \\
+RF11 & Dar o Envido a quem tiver mais pontos. A regra do sistema dá o empate ao jogador 1. \\
+RF12 & Permitir Flor com três cartas do mesmo naipe. Flor vale 3 e bloqueia o Envido. Se ambos têm Flor, há Contraflor, que vale 6, ou Contraflor e o Resto. \\
+RF13 & Encerrar a partida quando um jogador alcançar 12 pontos. \\
+RF14 & Exibir as cartas e as opções válidas de Truco, Flor, Envido, Real Envido, Falta Envido e desistência, conforme a mão e a rodada. \\
+RF15 & Avisar quando a entrada for inválida e pedir uma nova opção, mantendo a partida em andamento. \\
+RF16 & Usar CBR para decidir qual carta jogar e como responder a Truco, Envido e Flor com base nos casos semelhantes. \\
+RF17 & Consultar os 100 vizinhos mais próximos na base de casos \texttt{dbtrucoimitacao\_maos.csv}. \\
+RF18 & Registrar cada mão no arquivo \texttt{jogadas.csv}. \\
+\midrule
+\rowcolor{cabecalho}\textbf{ID} & \textbf{Requisito não funcional} \\
+\midrule
+RNF01 & Iniciar o jogo por \texttt{python -m truco} com as dependências instaladas. \\
+RNF02 & Responder a uma consulta da IA em menos de um segundo, conforme o critério do grupo. \\
+RNF03 & Reiniciar cartas, rodadas e estados das apostas ao começar uma nova mão. \\
+\bottomrule
+\end{longtable}
+
+\section{Cenários de uso e rastreabilidade}
+
+O fluxo principal e as alternativas descrevem o comportamento esperado. A última coluna identifica o que a suíte de testes exercita em cada cenário.
+
+\rowcolors{2}{faixa}{white}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}>{\raggedright\arraybackslash}p{0.41\textwidth}}
+\toprule
+\rowcolor{cabecalho}\textbf{Cenário} & \textbf{Fluxo principal e alternativas} & \textbf{Testes atuais} \\
+\midrule
+\endhead
+UC01 -- Iniciar partida & Informar os nomes e receber três cartas. Nomes vazios também podem ser informados. & CT34 e CT44 cobrem nomes e inicialização. CT02 cobre a distribuição. \\
+UC02 -- Jogar uma mão & Jogar cartas, resolver as rodadas e atualizar o placar. O bot também pode iniciar uma rodada. & CT42 executa mãos decididas em duas e em três rodadas, vencidas pelo humano e pelo bot, e verifica a nova mão e o registro. CT04, CT08 e CT09 exercitam as regras de rodada. \\
+UC03 -- Humano pede Truco & O humano escolhe [4] e o bot aceita, recusa ou aumenta a aposta. & CT18 a CT21 e D04 exercitam as regras no controlador. CT19 também executa o pedido pelo menu durante a partida. D14 registra uma falha no retorno de quem fugiu. \\
+UC04 -- Bot pede Truco & O bot pede Truco. O humano pode recusar, aceitar, aumentar ou digitar uma opção inválida. & CT19, CT20 e CT22 exercitam as respostas no controlador. D12 registra a falha com texto na resposta. \\
+UC05 -- Envido & Um jogador pede Envido, Real Envido ou Falta Envido. O outro responde e o vencedor recebe os pontos. & CT10 a CT16 cobrem as regras, inclusive o aumento para Real e Falta Envido pelo humano. CT12 a CT14 também executam os pedidos [6], [7] e [8] pelo menu. UC05 executa a partida com pedido do bot no início. D03, D07 e D12 exercitam defeitos em fluxos do jogo. \\
+UC06 -- Flor & Um jogador com três cartas do mesmo naipe canta Flor. Se ambos têm Flor, há Contraflor. & CT25 a CT27 exercitam a identificação, a pontuação e as respostas. CT26 também executa a Flor pelo menu [5] e a Contraflor e o Resto. D13 registra o valor incorreto desta última. \\
+UC07 -- Ir ao baralho & O humano escolhe [9], o bot ganha a aposta e uma nova mão começa. & CT33 executa o fluxo pelo menu principal. \\
+UC08 -- Entrada inválida & O humano digita texto ou uma opção inválida. O jogo deve avisar e repetir a pergunta. & CT32 verifica opções numéricas inválidas e a última carta válida. D06, D11 e D12 registram falhas com texto e com o índice igual ao tamanho da mão. \\
+UC09 -- Fim da partida & Ao chegar a 12 pontos, o jogo anuncia o vencedor e encerra. & CT43 verifica o placar final, o anúncio e o encerramento, com vitória do bot e do humano. \\
+\bottomrule
+\end{longtable}
+
+\section{Execução}
+
+Na raiz do projeto, com o ambiente virtual ativo, instalam-se as dependências e executa-se a suíte com o comando abaixo. Os marcadores \texttt{ia}, \texttt{entrada} e \texttt{cenario} permitem executar grupos de testes.
+
+\begin{verbatim}
+python -m pip install -r requirements-test.txt
+python -m pytest --cov=truco --cov-report=term -q
+\end{verbatim}
+
+\section{Resultados}
+
+A suíte de testes reuniu 75 testes em 12 arquivos. Foram registrados \textbf{62 testes aprovados, 13 falhas esperadas e nenhuma falha inesperada}. A cobertura de linhas do pacote \texttt{truco} foi de \textbf{89\%} (979 de 1.095 linhas executáveis).
+
+Os testes executam 126 das 131 funções do jogo. As cinco restantes (\texttt{carregar\_dataset}, \texttt{enriquecer\_cartas\_bot}, \texttt{exibir\_unica\_carta}, \texttt{iniciarJogo} e \texttt{quem\_inicia\_rodada}) não são chamadas em nenhum ponto do jogo.
+
+\rowcolors{2}{faixa}{white}
+\begin{tabularx}{\textwidth}{Lrr}
+\toprule
+\rowcolor{cabecalho}\textbf{Arquivo} & \textbf{Aprovados} & \textbf{XFAIL} \\
+\midrule
+\texttt{test\_00\_ambiente.py} & 3 & 0 \\
+\texttt{test\_baralho\_carta.py} & 5 & 1 \\
+\texttt{test\_cbr.py} & 8 & 3 \\
+\texttt{test\_cenarios.py} & 6 & 1 \\
+\texttt{test\_dados.py} & 3 & 0 \\
+\texttt{test\_entradas\_usuario.py} & 7 & 3 \\
+\texttt{test\_envido.py} & 8 & 1 \\
+\texttt{test\_flor.py} & 4 & 1 \\
+\texttt{test\_interface.py} & 5 & 0 \\
+\texttt{test\_jogador\_bot.py} & 5 & 0 \\
+\texttt{test\_jogo.py} & 3 & 1 \\
+\texttt{test\_truco.py} & 5 & 2 \\
+\midrule
+\rowcolor{cabecalho}\textbf{Total} & \textbf{62} & \textbf{13} \\
+\bottomrule
+\end{tabularx}
+
+\section{Defeitos verificados}
+
+A marcação \texttt{XFAIL} identifica testes que reproduzem defeitos conhecidos. A suíte manteve essas verificações separadas das que passam.
+
+\rowcolors{2}{faixa}{white}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.09\textwidth}>{\raggedright\arraybackslash}p{0.84\textwidth}}
+\toprule
+\rowcolor{cabecalho}\textbf{ID} & \textbf{Comportamento observado e situação} \\
+\midrule
+\endhead
+D01 & O separador incorreto impedia o carregamento da base. Corrigido e verificado pelo CT44. \\
+D02 & Cartas de força igual dão a vitória ao jogador 1 em vez de empatar. \\
+D03 & O pedido de Envido no turno do bot gera um erro de argumentos. A chamada seguinte no código ainda atribui o pedido ao humano. \\
+D04 & O Truco é aceito, mas a mão continua valendo um ponto. \\
+D05 & O bot falha ao classificar uma mão com três cartas de mesma força. \\
+D06 & Texto na seleção de carta encerra o jogo com \texttt{ValueError}. \\
+D07 & A pergunta de aceitação do Envido dirigido ao humano cita o jogador 2. \\
+D08 & A IA lança \texttt{IndexError} ao buscar uma carta em um cenário com duas manilhas e nenhum vizinho vencedor. \\
+D09 & A IA aumenta o Truco em um cenário de mão fraca. \\
+D10 & O registro preenchido durante a partida não chega à instância de dados consultada pela IA. \\
+D11 & Um índice igual ao tamanho da mão é aceito pela validação e provoca \texttt{IndexError}. \\
+D12 & Texto nas respostas de Envido e de Truco também encerra o jogo com \texttt{ValueError}. \\
+D13 & A Contraflor e o Resto vale apenas 3 pontos, menos que a Contraflor simples. \\
+D14 & O método \texttt{retornar\_quem\_fugiu} devolve a si mesmo em vez do número do jogador que fugiu. \\
+\bottomrule
+\end{longtable}
+
+\section{Conclusão}
+
+A suíte de testes mantém verificações das regras do jogo, das entradas do usuário, dos retornos de funções e da IA. Os cenários automatizados demonstram o fluxo da partida, incluindo todas as opções do menu principal, mãos decididas em duas e em três rodadas, a desistência, a disputa de Envido e o encerramento aos 12 pontos para os dois jogadores. Os resultados indicam quais comportamentos foram validados e quais ainda apresentam defeitos conhecidos.
+
+\section*{Fontes}
+
+TRUCO GAUDÉRIO. README, código-fonte, planilha de codificação e comentários do autor. Materiais fornecidos para a atividade.
+
+\section*{Inventário dos testes}
+
+A lista apresenta os testes por arquivo, com o comportamento verificado e o resultado observado.
+
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_00\_ambiente.py}}}
+\teste{test\_todos\_os\_modulos\_do\_jogo\_importam}{Importa os módulos do jogo.}{Aprovado}
+\teste{test\_CT44\_base\_de\_casos\_carrega\_sem\_adaptador}{Confere se a base carrega sem o adaptador dos testes.}{Aprovado}
+\teste{test\_CT44\_python\_m\_truco\_inicia}{Executa \texttt{python -m truco} e confere a inicialização.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_baralho\_carta.py}}}
+\teste{test\_CT01\_baralho\_tem\_40\_cartas\_10\_por\_naipe\_sem\_repeticao}{Confere 40 cartas, dez por naipe e nenhuma repetida.}{Aprovado}
+\teste{test\_CT01\_limites\_do\_laco\_que\_cria\_o\_baralho}{Verifica quais números entram no baralho nos limites do laço.}{Aprovado}
+\teste{test\_CT02\_CT03\_distribuicao\_e\_embaralhamento}{Verifica a distribuição das cartas e a ordem após embaralhar.}{Aprovado}
+\teste{test\_CT05\_pontos\_e\_ordem\_de\_forca\_das\_40\_cartas}{Confere os pontos e a hierarquia das 40 cartas.}{Aprovado}
+\teste{test\_CT06\_classificar\_mao\_em\_alta\_media\_e\_baixa}{Confere a classificação das cartas em alta, média e baixa.}{Aprovado}
+\teste{test\_D05\_bot\_recebe\_tres\_cartas\_de\_mesma\_forca}{Verifica se o bot consegue receber três cartas de força igual.}{XFAIL}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_cbr.py}}}
+\teste{test\_CT35\_base\_de\_casos\_e\_consulta\_de\_100\_vizinhos}{Valida a base de casos e a consulta dos 100 vizinhos.}{Aprovado}
+\teste{test\_CT35\_caso\_da\_base\_recupera\_ele\_mesmo}{Confere se um caso da base recupera a si próprio com distância zero.}{Aprovado}
+\teste{test\_CT36\_escolhe\_sempre\_uma\_carta\_da\_mao}{Verifica se a IA retorna um índice válido da mão.}{Aprovado}
+\teste{test\_CT36\_joga\_a\_carta\_mais\_proxima\_do\_valor\_de\_referencia}{Confere se a IA escolhe a carta mais próxima do valor de referência.}{Aprovado}
+\teste{test\_D08\_ia\_escolhe\_carta\_com\_mao\_de\_duas\_manilhas}{Verifica se a IA consegue escolher uma carta com duas manilhas na mão.}{XFAIL}
+\teste{test\_CT37\_resposta\_ao\_truco\_valida\_e\_crescente}{Confere os retornos válidos do Truco e sua progressão conforme a qualidade da mão.}{Aprovado}
+\teste{test\_D09\_mao\_fraca\_nao\_aumenta\_o\_truco}{Verifica se a IA evita aumentar o Truco com uma mão fraca.}{XFAIL}
+\teste{test\_CT38\_envido\_respostas\_validas\_e\_pedido\_so\_com\_pontos}{Confere as respostas ao Envido e quando a pontuação leva a um pedido.}{Aprovado}
+\teste{test\_CT39\_mesma\_situacao\_mesma\_decisao\_em\_menos\_de\_1\_segundo}{Repete as decisões para a mesma situação e verifica o limite de um segundo.}{Aprovado}
+\teste{test\_CT40\_situacao\_informada\_muda\_os\_vizinhos}{Verifica se mudar a situação altera os vizinhos recuperados.}{Aprovado}
+\teste{test\_D10\_ia\_recebe\_a\_situacao\_da\_partida}{Verifica se os dados registrados na partida chegam à IA.}{XFAIL}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_cenarios.py}}}
+\teste{test\_CT42\_mao\_completa\_vencida\_pelo\_humano}{Simula a vitória do humano em uma mão e confere o placar, a nova mão e o CSV.}{Aprovado}
+\teste{test\_CT43\_partida\_termina\_aos\_12\_pontos}{Confere se a partida termina quando o bot alcança 12 pontos.}{Aprovado}
+\teste{test\_UC05\_bot\_pede\_envido\_no\_inicio\_e\_vence}{Simula o bot pedindo Envido no início da partida e vencendo a aposta.}{Aprovado}
+\teste{test\_D07\_pergunta\_do\_envido\_e\_feita\_ao\_jogador\_1}{Confere se a pergunta de aceitação do Envido é dirigida ao humano.}{XFAIL}
+\teste{test\_CT42\_mao\_decidida\_na\_terceira\_rodada}{Simula uma mão em que o humano vence a primeira e a terceira rodadas e perde a segunda.}{Aprovado}
+\teste{test\_CT42\_bot\_vence\_a\_mao\_e\_comeca\_a\_seguinte}{Simula a vitória do bot em uma mão e confere se ele inicia a mão seguinte.}{Aprovado}
+\teste{test\_CT43\_humano\_vence\_a\_partida}{Confere se a partida termina quando o humano alcança 12 pontos.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_dados.py}}}
+\teste{test\_CT41\_primeira\_rodada\_grava\_a\_mao\_do\_bot}{Confere o registro da mão do bot na primeira rodada.}{Aprovado}
+\teste{test\_CT41\_cada\_mao\_vira\_uma\_linha\_em\_jogadas\_csv}{Verifica se cada mão acrescenta uma linha ao arquivo \texttt{jogadas.csv}.}{Aprovado}
+\teste{test\_CT41\_registro\_das\_rodadas\_apostas\_e\_reset}{Confere o registro das três rodadas, das apostas e dos vencedores, e a limpeza do registro.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_entradas\_usuario.py}}}
+\teste{test\_D06\_texto\_na\_escolha\_da\_carta\_pede\_de\_novo}{Digita texto ao escolher a carta e espera uma nova tentativa.}{XFAIL}
+\teste{test\_CT32\_opcao\_inexistente\_avisa\_e\_pergunta\_de\_novo}{Confere se uma opção inválida gera aviso e repete a pergunta.}{Aprovado}
+\teste{test\_D11\_indice\_igual\_ao\_numero\_de\_cartas}{Verifica se o jogo rejeita o índice igual ao número de cartas.}{XFAIL}
+\teste{test\_CT33\_ir\_ao\_baralho\_da\_o\_ponto\_ao\_bot\_e\_comeca\_nova\_mao}{Confere o ponto do bot e o início de uma nova mão após a desistência.}{Aprovado}
+\teste{test\_CT34\_nomes\_dos\_jogadores}{Verifica se o jogo recebe e exibe os nomes dos jogadores.}{Aprovado}
+\teste{test\_CT32\_ultima\_carta\_da\_mao\_e\_aceita}{Confere se a última carta da mão é aceita como opção válida.}{Aprovado}
+\teste{test\_CT19\_truco\_pedido\_pelo\_menu}{Pede Truco pelo menu, aceita o Retruco do bot e confere o valor da mão.}{Aprovado}
+\teste{test\_CT26\_flor\_cantada\_pelo\_menu}{Canta Flor pelo menu e confere os três pontos.}{Aprovado}
+\teste{test\_CT12\_CT14\_envidos\_pedidos\_pelo\_menu}{Pede Envido, Real Envido e Falta Envido pelo menu e confere a pontuação.}{Aprovado}
+\teste{test\_D12\_texto\_nas\_respostas\_de\_envido\_e\_truco}{Digita texto ao responder Envido e Truco e espera uma nova tentativa.}{XFAIL}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_envido.py}}}
+\teste{test\_CT10\_calculo\_dos\_pontos\_de\_envido}{Confere o cálculo dos pontos de Envido para diferentes mãos.}{Aprovado}
+\teste{test\_CT11\_humano\_recusa\_ou\_aceita\_o\_envido\_do\_bot}{Simula a recusa e a aceitação do pedido de Envido do bot.}{Aprovado}
+\teste{test\_CT11\_opcao\_invalida\_repete\_a\_pergunta}{Verifica se uma opção inválida faz a pergunta se repetir.}{Aprovado}
+\teste{test\_CT12\_humano\_pede\_envido\_e\_o\_bot\_responde}{Simula o pedido de Envido do humano e confere a resposta do bot.}{Aprovado}
+\teste{test\_CT13\_CT14\_valores\_do\_real\_envido\_e\_da\_falta\_envido}{Confere a pontuação de Real Envido e Falta Envido.}{Aprovado}
+\teste{test\_CT15\_vencedor\_do\_envido\_inclusive\_no\_empate}{Confere o vencedor do Envido com pontos diferentes ou iguais.}{Aprovado}
+\teste{test\_CT16\_segundo\_pedido\_na\_mesma\_mao\_e\_ignorado}{Verifica se um segundo pedido de Envido na mesma mão é ignorado.}{Aprovado}
+\teste{test\_D03\_bot\_pede\_envido\_na\_sua\_vez}{Força um pedido de Envido no turno do bot e verifica o processamento.}{XFAIL}
+\teste{test\_CT11\_humano\_aumenta\_para\_real\_ou\_falta\_envido}{Simula o humano aumentando o Envido do bot para Real Envido ou Falta Envido.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_flor.py}}}
+\teste{test\_CT25\_flor\_exige\_tres\_cartas\_do\_mesmo\_naipe}{Confere se Flor exige três cartas do mesmo naipe.}{Aprovado}
+\teste{test\_CT26\_flor\_vale\_3\_e\_contraflor\_vale\_6}{Confere três pontos para Flor e seis para Contraflor.}{Aprovado}
+\teste{test\_CT27\_resposta\_a\_contraflor\_com\_opcao\_invalida}{Confere se a pergunta de Contraflor se repete após uma resposta inválida.}{Aprovado}
+\teste{test\_CT26\_contraflor\_e\_resto\_e\_reset\_da\_flor}{Confere a oferta de Contraflor e o Resto e a limpeza do estado da Flor.}{Aprovado}
+\teste{test\_D13\_contraflor\_e\_resto\_vale\_mais\_que\_a\_contraflor}{Verifica se a Contraflor e o Resto vale mais que a Contraflor.}{XFAIL}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_interface.py}}}
+\teste{test\_CT28\_opcoes\_mudam\_conforme\_a\_mao}{Confere as opções exibidas conforme as cartas na mão.}{Aprovado}
+\teste{test\_CT29\_moldura\_das\_mensagens}{Verifica a moldura das mensagens.}{Aprovado}
+\teste{test\_CT29\_placar\_e\_vencedores}{Confere as mensagens de placar e de vencedores.}{Aprovado}
+\teste{test\_CT30\_desenho\_das\_cartas}{Confere o desenho das cartas e os símbolos dos naipes.}{Aprovado}
+\teste{test\_CT29\_CT30\_demais\_mensagens\_e\_cartas\_lado\_a\_lado}{Confere as demais mensagens, a limpeza da tela e a exibição de três cartas lado a lado.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_jogador\_bot.py}}}
+\teste{test\_jogador\_joga\_cartas\_e\_acumula\_pontos}{Confere a retirada de cartas da mão e a soma de pontos do jogador.}{Aprovado}
+\teste{test\_bot\_consulta\_a\_ia\_para\_jogar\_e\_atualiza\_a\_mao}{Verifica se o bot consulta a IA e atualiza a mão após jogar.}{Aprovado}
+\teste{test\_bot\_com\_duas\_cartas\_pede\_truco\_conforme\_a\_ia}{Confere o pedido de Truco do bot com duas cartas conforme a resposta da IA.}{Aprovado}
+\teste{test\_CT24\_nova\_mao\_zera\_o\_estado\_e\_mantem\_os\_pontos}{Confere a limpeza do estado da mão e a preservação dos pontos.}{Aprovado}
+\teste{test\_metodos\_auxiliares\_de\_bot\_baralho\_jogo\_e\_envido}{Confere os métodos auxiliares do bot, do baralho, do jogo e do Envido.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_jogo.py}}}
+\teste{test\_CT04\_carta\_mais\_forte\_vence\_nos\_1560\_confrontos}{Compara os pares de cartas para verificar se a de maior força vence.}{Aprovado}
+\teste{test\_D02\_cartas\_de\_mesma\_forca\_empatam}{Verifica se cartas de força igual resultam em empate.}{XFAIL}
+\teste{test\_CT08\_adicionar\_rodada\_retorna\_o\_vencedor}{Confere o retorno do vencedor ao registrar uma rodada.}{Aprovado}
+\teste{test\_CT09\_vencedor\_da\_rodada\_joga\_primeiro}{Verifica se o vencedor da rodada joga primeiro.}{Aprovado}
+\Needspace{6\baselineskip}\subsection*{\texttt{\textbf{test\_truco.py}}}
+\teste{test\_CT18\_humano\_pede\_truco\_e\_o\_bot\_aceita}{Confere o retorno de aceitação quando o humano pede Truco e o bot aceita.}{Aprovado}
+\teste{test\_D04\_truco\_aceito\_vale\_2\_pontos}{Verifica se o Truco aceito aumenta o valor da mão para dois pontos.}{XFAIL}
+\teste{test\_CT19\_retruco\_vale\_3\_e\_vale\_4\_vale\_4}{Confere os valores de três pontos para Retruco e quatro para Vale 4.}{Aprovado}
+\teste{test\_CT20\_recusa\_entrega\_o\_valor\_anterior\_a\_quem\_pediu}{Verifica se a recusa concede a quem pediu o valor anterior da aposta.}{Aprovado}
+\teste{test\_CT21\_mesmo\_jogador\_nao\_aumenta\_duas\_vezes\_seguidas}{Confere o bloqueio de dois aumentos seguidos pelo mesmo jogador.}{Aprovado}
+\teste{test\_CT22\_humano\_responde\_truco\_do\_bot\_com\_opcao\_invalida}{Verifica se uma resposta inválida ao Truco faz a pergunta se repetir.}{Aprovado}
+\teste{test\_D14\_retornar\_quem\_fugiu}{Verifica se o jogo informa quem fugiu após a recusa do Truco.}{XFAIL}
+
+\end{document}

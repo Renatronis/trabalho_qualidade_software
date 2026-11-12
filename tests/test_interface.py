@@ -55,3 +55,20 @@ def test_CT30_desenho_das_cartas(interface):
         desenho = interface.desenhar_cartas(carta)
         assert desenho[4] == f"│. . {simbolo} . .│"
         assert len(desenho) == 9 and {len(linha) for linha in desenho} == {11}
+
+
+# Confere as demais mensagens, a limpeza de tela e as três cartas lado a lado.
+@pytest.mark.requisito("CT29")
+@pytest.mark.requisito("CT30")
+def test_CT29_CT30_demais_mensagens_e_cartas_lado_a_lado(interface, capsys, monkeypatch):
+    interface.mostrar_pediu_truco("Renato")
+    interface.mostrar_jogador_opcoes("Renato")
+    assert capsys.readouterr().out == ("Renato pediu truco e o pedido já foi aceito, escolha outra jogada!\n"
+                                       "Jogador 1 é mão\n")
+    comandos = []
+    monkeypatch.setattr("os.system", comandos.append)
+    interface.limpar_tela()
+    assert comandos == ["clear"]
+    interface.exibir_cartas(["1 de ESPADAS", "7 de OUROS", "3 de COPAS"])
+    linhas = capsys.readouterr().out.splitlines()
+    assert len(linhas) == 9 and all(len(linha) == 11 * 3 + 2 * 2 for linha in linhas)

@@ -52,3 +52,32 @@ def test_CT24_nova_mao_zera_o_estado_e_mantem_os_pontos(bot_com_mao, jogador_com
     jogador.pontos, jogador.rodadas, jogador.pediu_truco = 5, 1, True
     jogador.resetar()
     assert (jogador.mao, jogador.rodadas, jogador.pediu_truco, jogador.pontos) == ([], 0, False, 5)
+
+
+# Exercita os métodos auxiliares do bot, do baralho, do jogo e do envido.
+def test_metodos_auxiliares_de_bot_baralho_jogo_e_envido(bot_com_mao, capsys):
+    from truco.baralho import Baralho
+    from truco.envido import Envido
+    from truco.jogador import Jogador
+    from truco.jogo import Jogo
+
+    bot = bot_com_mao(*MAO)
+    bot.adicionar_rodada()
+    bot.adicionar_pontos(3)
+    assert bot.rodadas == 1 and bot.retorna_pontos_totais() == 3
+    assert bot.avaliar_pedir_envido() == 1
+
+    bot.mostrar_mao()
+    Baralho().printar_baralho()
+    saida = capsys.readouterr().out.splitlines()
+    assert saida[0] == "[0] 1 de ESPADAS" and len(saida) == 3 + 40   # mão do bot + baralho inteiro
+
+    envido = Envido()
+    envido.inicializar_jogador_bloqueado(1)
+    envido.inverter_jogador_bloqueado()
+    assert envido.jogador_bloqueado == 2
+
+    humano, outro = Jogador("Renato"), Jogador("Lucas")
+    humano.primeiro, outro.primeiro = False, True
+    Jogo().jogador_fugiu(outro, humano, outro, -1)
+    assert (humano.primeiro, outro.primeiro) == (True, False)

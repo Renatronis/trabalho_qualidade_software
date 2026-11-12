@@ -161,3 +161,15 @@ def test_D03_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
     assert pedidos and all(quem_pediu == BOT for _, quem_pediu in pedidos), f"pedidos: {pedidos}"
     assert any("aceita o pedido de envido" in p for p in partida.perguntas)
     assert respostas_do_bot == []
+
+
+# O humano responde ao Envido do bot aumentando para Real Envido [2] ou Falta Envido [3].
+@pytest.mark.requisito("CT11")
+@pytest.mark.entrada
+def test_CT11_humano_aumenta_para_real_ou_falta_envido(jogador_com_mao, bot_com_mao, interface,
+                                                      cbr_falsa, entradas_usuario):
+    for resposta, pontos_humano in (("2", 5), ("3", 12)):   # o bot aceita; 33 x 7
+        humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
+        entradas_usuario(resposta)
+        pedir(cbr_falsa(envido=1), ENVIDO, BOT, humano, bot, interface)
+        assert (humano.pontos, bot.pontos) == (pontos_humano, 0), f"resposta {resposta}"

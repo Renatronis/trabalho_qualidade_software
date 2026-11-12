@@ -1,6 +1,6 @@
 # Testes automatizados – Truco Gaudério com CBR
 
-Trabalho de Qualidade de Software 2026/02, feito por Renato e Lucas. A suíte atual tem **60 testes em 12 arquivos**. Na última execução, **50 passaram e 10 apresentaram falhas esperadas**.
+Trabalho de Qualidade de Software 2026/02, feito por Renato e Lucas. A suíte atual tem **75 testes em 12 arquivos**. Na última execução, **62 passaram e 13 apresentaram falhas esperadas**. Os testes executam 89% das linhas e 126 das 131 funções do jogo; as 5 restantes (`carregar_dataset`, `enriquecer_cartas_bot`, `exibir_unica_carta`, `iniciarJogo` e `quem_inicia_rodada`) não são chamadas em nenhum ponto do jogo.
 
 ## Instalação (ambiente virtual .venv)
 
@@ -38,7 +38,7 @@ python -m pip install -r requirements-test.txt
 ## Como ler o resultado
 
 - **PASSED** indica que o resultado bateu com o esperado.
-- **XFAIL** indica uma falha esperada associada a um defeito conhecido. O resumo mostra o código e o motivo, de D02 a D11.
+- **XFAIL** indica uma falha esperada associada a um defeito conhecido. O resumo mostra o código e o motivo, de D02 a D14.
 - **FAILED** indica uma falha inesperada.
 - **XPASS(strict)** indica que um teste marcado como falha esperada passou. A configuração do projeto faz a suíte sinalizar esse resultado como falha para revisão.
 
@@ -54,10 +54,10 @@ python -m pip install -r requirements-test.txt
 | `test_jogador_bot.py` | Métodos do jogador e do bot (CT24) |
 | `test_flor.py` | Flor e contraflor (CT25 a CT27) |
 | `test_interface.py` | Opções e mensagens na tela (CT28 a CT30) |
-| `test_entradas_usuario.py` | Entradas na tela principal (CT31 a CT34) |
+| `test_entradas_usuario.py` | Todas as opções do menu principal e texto nas respostas (CT11 a CT14, CT19, CT22, CT26 e CT31 a CT34) |
 | `test_cbr.py` | IA real: base de casos e decisões (CT35 a CT40) |
 | `test_dados.py` | Registro de jogadas (CT41) |
-| `test_cenarios.py` | Vitória em uma mão, fim da partida e pedido de Envido do bot (CT11, CT12, CT42 e CT43) |
+| `test_cenarios.py` | Mãos decididas em 2 e em 3 rodadas, vitória do bot, fim da partida para os dois lados e pedido de Envido do bot (CT09, CT11, CT12, CT42 e CT43) |
 
 ## Defeito D01 (corrigido)
 
