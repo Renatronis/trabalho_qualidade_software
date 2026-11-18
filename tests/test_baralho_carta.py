@@ -40,6 +40,7 @@ def test_CT01_limites_do_laco_que_cria_o_baralho():
 def test_CT02_CT03_distribuicao_e_embaralhamento():
     baralho = Baralho()
     antes = sorted(c.retornar_carta() for c in baralho.cartas)
+    # A semente fixa torna o embaralhamento reproduzível.
     random.seed(1)
     baralho.embaralhar()
     ordem_1 = [c.retornar_carta() for c in baralho.cartas]
@@ -54,6 +55,7 @@ def test_CT02_CT03_distribuicao_e_embaralhamento():
     humano = jogo.criar_jogador("Renato", baralho)
     bot = jogo.criar_bot("Lucas", baralho)
     assert len(humano.mao) == len(bot.mao) == 3
+    # Seis cartas foram entregues: 40 - 6 = 34.
     assert len(baralho.cartas) == 34
     dadas = {c.retornar_carta() for c in humano.mao + bot.mao}
     assert len(dadas) == 6 and not dadas & {c.retornar_carta() for c in baralho.cartas}
@@ -82,6 +84,7 @@ def test_CT06_classificar_mao_em_alta_media_e_baixa(nova_mao):
         (["7 de OUROS", "7 de COPAS", "12 de BASTOS"], [40, 4, 8], ["Alta", "Baixa", "Media"]),
         (["7 de ESPADAS", "1 de BASTOS", "5 de COPAS"], [42, 50, 2], ["Media", "Alta", "Baixa"]),
     ]
+    # Cada caso traz as cartas e os dois resultados esperados.
     for textos, pontos, ranks in casos:
         cartas = nova_mao(*textos)
         assert cartas[0].classificar_carta(cartas) == (pontos, ranks), textos

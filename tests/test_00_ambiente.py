@@ -26,6 +26,7 @@ def test_CT44_base_de_casos_carrega_sem_adaptador():
     assert pd.read_csv.__module__.startswith("pandas")
     from truco.dados import Dados
     casos = Dados().retornar_casos()
+    # A base deve manter todos os casos e nenhum campo vazio.
     assert len(casos) == 27515
     assert casos.isna().sum().sum() == 0
 

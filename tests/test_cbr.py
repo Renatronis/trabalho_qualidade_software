@@ -16,6 +16,7 @@ MAO_FRACA = ("4 de COPAS", "5 de OUROS", "6 de BASTOS")
 
 @pytest.fixture
 def situacao(cbr_real, bot_com_mao, nova_carta):
+    # Preenche o registro da IA com a mão do bot e a carta jogada pelo humano.
     def _montar(mao_bot, carta_humano):
         bot = bot_com_mao(*mao_bot)
         cbr_real.dados.primeira_rodada(list(bot.pontuacao_cartas), list(bot.mao_rank),
@@ -25,6 +26,7 @@ def situacao(cbr_real, bot_com_mao, nova_carta):
 
 
 def vizinhos(cbr):
+    # Uma linha representa a consulta; o retorno contém distâncias e posições dos casos.
     return cbr.nbrs.kneighbors(cbr.dados.retornar_registro().to_numpy().reshape(1, -1))
 
 
@@ -44,6 +46,7 @@ def test_CT35_base_de_casos_e_consulta_de_100_vizinhos(cbr_real):
 def test_CT35_caso_da_base_recupera_ele_mesmo(cbr_real):
     for linha in (0, 13000, 27514):
         distancias, indices = cbr_real.nbrs.kneighbors(cbr_real.dataset.iloc[[linha]].to_numpy())
+        # [0][0] seleciona o vizinho mais próximo da única consulta feita.
         assert distancias[0][0] == 0
         assert cbr_real.dataset.iloc[indices[0][0]].equals(cbr_real.dataset.iloc[linha])
 
@@ -51,6 +54,7 @@ def test_CT35_caso_da_base_recupera_ele_mesmo(cbr_real):
 # Verifica se a IA retorna um índice válido da mão.
 @pytest.mark.requisito("CT36")
 def test_CT36_escolhe_sempre_uma_carta_da_mao(cbr_real, situacao):
+    # A decisão deve ser uma posição existente na mão, que diminui a cada rodada.
     for mao in (MAO_MEDIA, MAO_FRACA):
         for carta_humano in ("3 de OUROS", "4 de ESPADAS"):
             bot = situacao(mao, carta_humano)
@@ -66,10 +70,13 @@ def test_CT36_joga_a_carta_mais_proxima_do_valor_de_referencia(cbr_real, monkeyp
 
     def referencia_24(serie, *args, **kwargs):
         if serie.name and serie.name.endswith("CartaRobo"):
+            # Simula dez ocorrências do valor 24 nas colunas de cartas do bot.
             return pd.Series([10], index=[24])
         return original(serie, *args, **kwargs)
 
+    # Substitui a contagem apenas durante este teste para fixar a referência.
     monkeypatch.setattr(pd.Series, "value_counts", referencia_24)
+    # O retorno é o índice da carta mais próxima de 24: segunda, segunda e primeira.
     assert cbr_real.jogar_carta(1, [52, 24, 1]) == 1
     assert cbr_real.jogar_carta(1, [52, 30, 1]) == 1
     assert cbr_real.jogar_carta(1, [12, 52, 40]) == 0
@@ -89,6 +96,7 @@ def test_D08_ia_escolhe_carta_com_mao_de_duas_manilhas(cbr_real, situacao):
 # da mão.
 @pytest.mark.requisito("CT37")
 def test_CT37_resposta_ao_truco_valida_e_crescente(cbr_real, situacao):
+    # As respostas são 0 (recusar), 1 (aceitar) e 2 (aumentar), com qualidades de 0 a 60.
     respostas = [cbr_real.truco("truco", 1, q) for q in range(0, 61, 5)]
     assert set(respostas) <= {0, 1, 2}
     assert respostas == sorted(respostas)
@@ -109,6 +117,7 @@ def test_D09_mao_fraca_nao_aumenta_o_truco(cbr_real, situacao):
 # Confere as respostas ao Envido e quando a pontuação leva a um pedido.
 @pytest.mark.requisito("CT38")
 def test_CT38_envido_respostas_validas_e_pedido_so_com_pontos(cbr_real):
+    # Os tipos 6, 7 e 8 representam Envido, Real Envido e Falta Envido.
     for pontos in (0, 25, 33):
         assert cbr_real.envido(6, 1, pontos, False) in (0, 1, 2, 3)
         assert cbr_real.envido(7, 1, pontos, False) in (0, 1)
@@ -118,7 +127,7 @@ def test_CT38_envido_respostas_validas_e_pedido_so_com_pontos(cbr_real):
         assert (cbr_real.envido("Envido", 2, pontos, False) in (6, 7, 8)) is pede, pontos
 
 
-# Repete as decisões para a mesma situação e verifica o limite de um segundo.
+# Repete as decisões para a mesma situação e verifica o tempo médio abaixo de um segundo.
 @pytest.mark.requisito("CT39")
 def test_CT39_mesma_situacao_mesma_decisao_em_menos_de_1_segundo(cbr_real):
     decisoes = {
@@ -129,6 +138,7 @@ def test_CT39_mesma_situacao_mesma_decisao_em_menos_de_1_segundo(cbr_real):
     outra_ia = Cbr()
     for nome, decidir in decisoes.items():
         inicio = time.perf_counter()
+        # O conjunto guarda respostas distintas: tamanho 1 significa decisões iguais.
         resultados = {decidir(cbr_real) for _ in range(5)}
         assert (time.perf_counter() - inicio) / 5 < 1.0, nome
         assert len(resultados) == 1, nome
@@ -138,6 +148,7 @@ def test_CT39_mesma_situacao_mesma_decisao_em_menos_de_1_segundo(cbr_real):
 # Verifica se mudar a situação altera os vizinhos recuperados.
 @pytest.mark.requisito("CT40")
 def test_CT40_situacao_informada_muda_os_vizinhos(cbr_real, situacao):
+    # Ignora as distâncias e compara as posições dos casos recuperados.
     _, vizinhos_vazio = vizinhos(cbr_real)
     situacao(MAO_FORTE, "3 de OUROS")
     _, vizinhos_preenchido = vizinhos(cbr_real)
@@ -155,4 +166,5 @@ def test_D10_ia_recebe_a_situacao_da_partida(executar_partida):
         maos=[(["3 de COPAS", "5 de OUROS", "6 de BASTOS"],
                ["4 de COPAS", "12 de OUROS", "2 de BASTOS"])])
     registro_da_ia = partida.estado["cbr"].dados.retornar_registro()
+    # Depois da jogada, a coluna deve conter o código da carta humana.
     assert registro_da_ia.primeiraCartaHumano.iloc[0] != 0

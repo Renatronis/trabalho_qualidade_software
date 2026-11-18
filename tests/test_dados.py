@@ -18,6 +18,7 @@ def test_CT41_primeira_rodada_grava_a_mao_do_bot(dados, bot_com_mao, nova_carta)
     bot = bot_com_mao("1 de ESPADAS", "3 de COPAS", "4 de OUROS")
     dados.primeira_rodada(list(bot.pontuacao_cartas), list(bot.mao_rank), bot.qualidade_mao,
                           nova_carta("7 de COPAS"))
+    # iloc[0] seleciona a primeira linha do registro para conferir os campos.
     registro = dados.retornar_registro().iloc[0]
     assert (registro.cartaAltaRobo, registro.cartaMediaRobo, registro.cartaBaixaRobo) == (52, 24, 1)
     assert registro.jogadorMao == 1
@@ -31,6 +32,7 @@ def test_CT41_cada_mao_vira_uma_linha_em_jogadas_csv(dados, tmp_path):
     for _ in range(3):
         dados.finalizar_partida()
     arquivo = pd.read_csv(tmp_path / "jogadas.csv")
+    # Três gravações devem acrescentar três linhas, sem sobrescrever.
     assert len(arquivo) == 3
     assert "cartaAltaRobo" in arquivo.columns
 

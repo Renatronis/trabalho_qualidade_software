@@ -35,6 +35,7 @@ def test_CT42_mao_completa_vencida_pelo_humano(executar_partida, tmp_path):
 def test_CT43_partida_termina_aos_12_pontos(executar_partida):
     partida = executar_partida("Renato", "Lucas", *["9"] * 12,
                                maos=[(HUMANO_FORTE, BOT_FRACO)] * 13)
+    # As doze desistências dão um ponto por mão ao bot.
     assert partida.erro is None
     assert pontos(partida) == (0, 12)
     assert sum("Qual carta" in p for p in partida.perguntas) == 12
@@ -48,6 +49,7 @@ def test_UC05_bot_pede_envido_no_inicio_e_vence(executar_partida):
     assert "você aceita o pedido de envido" in partida.perguntas[2]
     assert pontos(partida) == (0, 2)
     assert "Jogador 2 Vencedor Envido" in partida.saida
+    # A simulação para quando acabam as respostas fornecidas pelo teste.
     assert isinstance(partida.erro, EntradasEsgotadas)
     assert "Qual carta" in partida.perguntas[-1]
 

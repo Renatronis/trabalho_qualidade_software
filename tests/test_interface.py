@@ -9,6 +9,7 @@ OPCOES_ENVIDO = ("[6] Envido", "[7] Real Envido", "[8] Falta Envido")
 def test_CT28_opcoes_mudam_conforme_a_mao(jogador_com_mao, interface, capsys):
     jogador = jogador_com_mao("1 de ESPADAS", "3 de COPAS", "4 de OUROS")
     jogador.mostrar_opcoes(interface)
+    # capsys captura o texto impresso para comparar com o esperado.
     saida = capsys.readouterr().out
     for texto in ("[0] 1 de ESPADAS", "[2] 4 de OUROS", "[4] Truco", *OPCOES_ENVIDO, "[9] Ir ao baralho"):
         assert texto in saida
@@ -66,6 +67,7 @@ def test_CT29_CT30_demais_mensagens_e_cartas_lado_a_lado(interface, capsys, monk
     assert capsys.readouterr().out == ("Renato pediu truco e o pedido já foi aceito, escolha outra jogada!\n"
                                        "Jogador 1 é mão\n")
     comandos = []
+    # Registra o comando sem limpar o terminal durante o teste.
     monkeypatch.setattr("os.system", comandos.append)
     interface.limpar_tela()
     assert comandos == ["clear"]

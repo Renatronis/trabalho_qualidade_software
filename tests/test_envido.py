@@ -60,6 +60,7 @@ def test_CT11_humano_recusa_ou_aceita_o_envido_do_bot(jogador_com_mao, bot_com_m
 @pytest.mark.requisito("CT11")
 @pytest.mark.entrada
 def test_CT11_opcao_invalida_repete_a_pergunta(humano, bot, interface, cbr_falsa, entradas_usuario):
+    # Simula as respostas em sequência, sem digitação manual.
     registro = entradas_usuario("9", "-1", "1")
     pedir(cbr_falsa(), ENVIDO, BOT, humano, bot, interface)
     assert len(registro.perguntas) == 3
@@ -89,6 +90,7 @@ def test_CT13_CT14_valores_do_real_envido_e_da_falta_envido(jogador_com_mao, bot
     pedir(cbr_falsa(envido=1), REAL_ENVIDO, HUMANO, humano, bot, interface)
     assert humano.pontos == 5
 
+    # A Falta Envido considera quanto falta para o adversário chegar a 12.
     for pontos_bot, falta in ((0, 12), (8, 4)):
         humano, bot = jogador_com_mao(*MAO_33), bot_com_mao(*MAO_7)
         bot.pontos = pontos_bot
@@ -135,6 +137,7 @@ def test_D03_bot_pede_envido_na_sua_vez(executar_partida, monkeypatch):
     assinatura = inspect.signature(controlador_original)
     pedidos = []
 
+    # Registra os argumentos e mantém a chamada ao método original.
     def controlador_espiao(self, *args, **kwargs):
         argumentos = assinatura.bind(self, *args, **kwargs)
         pedidos.append((argumentos.arguments["tipo"], argumentos.arguments["quem_pediu"]))

@@ -28,11 +28,13 @@ def test_CT04_carta_mais_forte_vence_nos_1560_confrontos():
     baralho = [Carta(n, s) for s in NAIPES for n in NUMEROS]
     erros = []
     for carta_1, carta_2 in itertools.permutations(baralho, 2):
+        # Empates ficam no teste D02; aqui comparamos forças diferentes.
         if forca(carta_1) == forca(carta_2):
             continue
         esperada = carta_1 if forca(carta_1) > forca(carta_2) else carta_2
         if jogo.verificar_carta_vencedora(carta_1, carta_2) is not esperada:
             erros.append((carta_1.retornar_carta(), carta_2.retornar_carta()))
+    # Nenhuma comparação pode escolher a carta mais fraca.
     assert erros == []
 
 

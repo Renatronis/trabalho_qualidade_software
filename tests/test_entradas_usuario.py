@@ -34,6 +34,7 @@ def test_CT32_opcao_inexistente_avisa_e_pergunta_de_novo(executar_partida):
 @pytest.mark.defeito("D11")
 @pytest.mark.xfail(reason="D11: o teste usa <= len(mão); o índice igual ao número de cartas dá IndexError")
 def test_D11_indice_igual_ao_numero_de_cartas(executar_partida):
+    # Com três cartas, as posições válidas são 0, 1 e 2.
     partida = executar_partida("Renato", "Lucas", "3", "0", maos=MAOS)
     assert not isinstance(partida.erro, IndexError)
     assert "Selecione um valor válido!" in partida.saida
@@ -47,6 +48,7 @@ def test_CT33_ir_ao_baralho_da_o_ponto_ao_bot_e_comeca_nova_mao(executar_partida
     assert (humano.pontos, bot.pontos) == (0, 1)
     assert "Jogador Renato fugiu!" in partida.saida
     assert len(humano.mao) == 3 and humano.rodadas == 0
+    # O CSV fica em uma pasta temporária, isolado dos arquivos reais.
     assert (tmp_path / "jogadas.csv").exists()
 
 

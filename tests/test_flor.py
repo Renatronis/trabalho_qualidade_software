@@ -11,6 +11,7 @@ SEM_FLOR = ("4 de ESPADAS", "5 de BASTOS", "6 de ESPADAS")
 # Confere se Flor exige três cartas do mesmo naipe.
 @pytest.mark.requisito("CT25")
 def test_CT25_flor_exige_tres_cartas_do_mesmo_naipe(jogador_com_mao, bot_com_mao):
+    # A mesma regra deve valer para o humano e para o bot.
     for fabrica in (jogador_com_mao, bot_com_mao):
         assert fabrica(*FLOR_COPAS).checa_flor() is True
         assert fabrica(*SEM_FLOR).checa_flor() is False
@@ -57,6 +58,7 @@ def test_CT26_contraflor_e_resto_e_reset_da_flor(jogador_com_mao, bot_com_mao, i
     assert "Contraflor e Resto" in registro.perguntas[0]
     assert humano.pontos > 6                       # o humano (32 x 25) vence e pontua
     flor.resetar_flor()
+    # Compara o estado após o reset com uma Flor recém-criada.
     for atributo, valor_inicial in vars(Flor()).items():
         assert getattr(flor, atributo) == valor_inicial, atributo
 

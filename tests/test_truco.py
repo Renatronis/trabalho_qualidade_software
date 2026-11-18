@@ -20,6 +20,7 @@ def jogadores(jogador_com_mao, bot_com_mao):
 @pytest.mark.requisito("CT23")
 def test_CT18_humano_pede_truco_e_o_bot_aceita(jogadores, cbr_falsa):
     humano, bot = jogadores()
+    # A resposta fixa da IA simula a aceitação do bot.
     truco, ia = Truco(), cbr_falsa(truco=1)
     assert truco.retornar_valor_aposta() == 1
     assert truco.controlador_truco(ia, None, HUMANO, humano, bot) is True
@@ -81,6 +82,7 @@ def test_CT21_mesmo_jogador_nao_aumenta_duas_vezes_seguidas(jogadores, cbr_falsa
     truco.controlador_truco(cbr_falsa(truco=1), None, HUMANO, humano, bot)
     ia = cbr_falsa(truco=1)
     assert truco.controlador_truco(ia, None, HUMANO, humano, bot) is None
+    # Pedido bloqueado não deve chegar à IA.
     assert ia.chamadas == []
 
 
@@ -89,6 +91,7 @@ def test_CT21_mesmo_jogador_nao_aumenta_duas_vezes_seguidas(jogadores, cbr_falsa
 @pytest.mark.entrada
 def test_CT22_humano_responde_truco_do_bot_com_opcao_invalida(jogadores, cbr_falsa, entradas_usuario):
     humano, bot = jogadores()
+    # Duas respostas inválidas, seguidas de uma aceitação válida.
     registro = entradas_usuario("3", "9", "1")
     assert Truco().controlador_truco(cbr_falsa(), None, BOT, humano, bot) is True
     assert len(registro.perguntas) == 3

@@ -11,6 +11,7 @@ def test_jogador_joga_cartas_e_acumula_pontos(jogador_com_mao):
     jogador = jogador_com_mao(*MAO)
     assert jogador.jogar_carta(1).retornar_carta() == "3 de COPAS"
     assert [c.retornar_carta() for c in jogador.checa_mao()] == ["1 de ESPADAS", "4 de OUROS"]
+    # O método deve lançar erro ao receber uma posição inexistente.
     with pytest.raises(IndexError):
         jogador.jogar_carta(5)
     for valor in (1, 2, 3):
@@ -21,6 +22,7 @@ def test_jogador_joga_cartas_e_acumula_pontos(jogador_com_mao):
 # Verifica se o bot consulta a IA e atualiza a mão após jogar.
 def test_bot_consulta_a_ia_para_jogar_e_atualiza_a_mao(bot_com_mao, cbr_falsa):
     bot, ia = bot_com_mao(*MAO), cbr_falsa(jogar_carta=1)
+    # Aceita uma pequena diferença no cálculo com casas decimais.
     assert bot.qualidade_mao == pytest.approx(38.3947, abs=1e-3)
     assert bot.jogar_carta(ia, None) == 1
     assert ia.chamadas == [("jogar_carta", 1, [52, 24, 1])]
@@ -46,6 +48,7 @@ def test_CT24_nova_mao_zera_o_estado_e_mantem_os_pontos(bot_com_mao, jogador_com
     bot.resetar()
     novo = Bot("Bot")
     novo.pontos = 7
+    # O estado deve voltar ao inicial, preservando os sete pontos.
     assert vars(bot) == vars(novo)
 
     jogador = jogador_com_mao(*MAO)
